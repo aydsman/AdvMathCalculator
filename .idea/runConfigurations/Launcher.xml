@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="true" name="Launcher" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="ui.Launcher" />
+    <module name="AdvMathCalculator" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
