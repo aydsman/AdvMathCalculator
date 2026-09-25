@@ -1,10 +1,12 @@
-# Compiles and runs the Advanced Math Calculator without needing Maven on PATH.
+# Compiles and runs the Advanced Math Calculator.
+# Usage (from project root):  .\run.bat   or   .\run.ps1
 $ErrorActionPreference = "Stop"
 
+Set-Location $PSScriptRoot
 & "$PSScriptRoot\compile.ps1"
 
 $ver = "21.0.5"
-$jfx = "$env:USERPROFILE\.m2\repository\org\openjfx"
+$jfx = Join-Path $env:USERPROFILE ".m2\repository\org\openjfx"
 $jars = @(
     "$jfx\javafx-base\$ver\javafx-base-$ver.jar",
     "$jfx\javafx-base\$ver\javafx-base-$ver-win.jar",
@@ -15,6 +17,12 @@ $jars = @(
 )
 $cp = ($jars -join ';')
 
-$runCp = "$cp;$PSScriptRoot\target\classes;$PSScriptRoot\src\main\resources"
-Write-Host "Launching..."
-java -cp $runCp ui.Launcher
+$classes = Join-Path $PSScriptRoot "target\classes"
+$resources = Join-Path $PSScriptRoot "src\main\resources"
+$runCp = "$cp;$classes;$resources"
+
+Write-Host "Launching ui.Launcher..."
+& java -cp $runCp ui.Launcher
+if ($LASTEXITCODE -ne 0) {
+    throw "java exited with code $LASTEXITCODE"
+}
