@@ -12,6 +12,7 @@ import backend.math.functions.InverseFunction;
 import backend.math.functions.Transformations;
 import backend.math.calculus.differential.Derivative;
 import backend.math.calculus.differential.ImplicitDerivative;
+import backend.math.calculus.integral.Antiderivative;
 import backend.math.calculus.integral.RiemannSum;
 import backend.math.calculus.limits.Limit;
 import backend.math.trig.Identities;
@@ -65,6 +66,7 @@ public class MainApp extends Application {
         engine.register("implicitDerivative", new ImplicitDerivative());
         engine.register("limit", new Limit());
         engine.register("riemannSum", new RiemannSum());
+        engine.register("indefiniteIntegral", new Antiderivative());
 
         LeftPanel leftPanel = new LeftPanel();
         RightPanel rightPanel = new RightPanel(menu);
