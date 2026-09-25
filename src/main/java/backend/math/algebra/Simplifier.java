@@ -395,6 +395,14 @@ public class Simplifier implements MathOperation {
                     }
                 }
             }
+            case "abs" -> {
+                if (a instanceof Num n) {
+                    return isNegative(n) ? numNeg(n) : n;
+                }
+                if (a instanceof Neg n) {
+                    return simplifyFunc("abs", n.operand());
+                }
+            }
             case "sin", "tan" -> {
                 if (a instanceof Num n && n.isZero()) {
                     return ZERO;
