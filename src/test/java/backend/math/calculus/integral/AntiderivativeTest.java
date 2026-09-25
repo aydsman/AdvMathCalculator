@@ -50,6 +50,31 @@ class AntiderivativeTest {
         assertEquals(expected.trim(), result.getExact().toDisplay());
     }
 
+    @ParameterizedTest(name = "∫ {0} = {1} (u-sub)")
+    @CsvSource(delimiter = '|', value = {
+            "2*x*sin(x^2) | -cos(x^2) + C",
+            "x*sin(x^2) | -1/2*cos(x^2) + C",
+            "2*x*cos(x^2) | sin(x^2) + C",
+            "3*x^2*cos(x^3) | sin(x^3) + C",
+            "2*x*(x^2)^3 | 1/4*x^8 + C",
+            "x/(x^2+1) | 1/2*ln(abs(x^2 + 1)) + C",
+    })
+    void integratesSimpleUSub(String input, String expected) {
+        Result result = solve(input.trim());
+        assertTrue(result.isSuccess(), () -> input + " -> " + result.getError());
+        assertEquals(expected.trim(), result.getExact().toDisplay());
+    }
+
+    @Test
+    void uSubExplainsSubstitutionInSteps() {
+        Result result = solve("2*x*sin(x^2)");
+        assertTrue(result.isSuccess(), result.getError());
+        assertTrue(result.getSteps().stream()
+                .anyMatch(s -> s.getDescription().toLowerCase().contains("u-substitution")
+                        || s.getDescription().contains("u = ")));
+        assertEquals("-cos(x^2) + C", result.getExact().toDisplay());
+    }
+
     @Test
     void stripsIntegralWrappers() {
         Result result = solve("integral 2*x dx");
@@ -74,9 +99,8 @@ class AntiderivativeTest {
     void rejectsUnsupportedShapes() {
         Result result = solve("sin(x)*cos(x)");
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().toLowerCase().contains("a·f(bx + c)")
-                || result.getError().toLowerCase().contains("a*f(bx + c)")
-                || result.getError().contains("supported"));
+        assertTrue(result.getError().toLowerCase().contains("supported")
+                || result.getError().contains("Could not integrate"));
     }
 
     @Test

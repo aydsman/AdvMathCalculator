@@ -2,6 +2,7 @@ package backend.math.calculus.integral;
 
 import backend.engine.MathOperation;
 import backend.math.algebra.Simplifier;
+import backend.math.calculus.differential.Derivative;
 import backend.math.functions.FunctionUtils;
 import backend.models.Result;
 import backend.models.Step;
@@ -23,14 +24,13 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Indefinite integrals of the form {@code ∫ a·f(bx + c) dx} using the constant-multiple
- * and linear-composition antiderivative properties:
+ * Indefinite integrals using:
+ * <ul>
+ *   <li>{@code ∫ a·f(bx + c) dx = (a/b)·F(bx + c) + C}</li>
+ *   <li>simple u-sub: {@code ∫ k·g'(x)·f(g(x)) dx = k·F(g(x)) + C}</li>
+ * </ul>
  *
- * <pre>
- *   ∫ a · f(bx + c) dx = (a/b) · F(bx + c) + C   (b ≠ 0)
- * </pre>
- *
- * <p>Supports a base table for powers, reciprocal, sin, cos, sqrt, sec², and csc².
+ * <p>Base table: powers, reciprocal, sin, cos, sqrt, sec², csc².
  */
 public class Antiderivative implements MathOperation {
 
@@ -118,12 +118,21 @@ public class Antiderivative implements MathOperation {
         }
 
         MatchedForm match = matchAfBxC(core, variable);
-        if (match == null) {
-            return Result.failure(
-                    "Only antiderivatives of the form a·f(bx + c) are supported so far "
-                            + "(powers, 1/u, sin, cos, sqrt, sec^2, csc^2).");
+        if (match != null) {
+            return integrateAfBxC(a, match, variable, steps);
         }
 
+        Result usub = tryUSubstitution(a, core, variable, steps);
+        if (usub != null) {
+            return usub;
+        }
+
+        return Result.failure(
+                "Could not integrate this expression. Supported forms: a·f(bx + c) and "
+                        + "g'(x)·f(g(x)) (u-sub) for powers, 1/u, sin, cos, sqrt, sec^2, csc^2.");
+    }
+
+    private static Result integrateAfBxC(Num a, MatchedForm match, String variable, List<Step> steps) {
         Linear u = match.linear();
         steps.add(new Step(
                 "Identify linear inside: u = " + formatLinear(u, variable)
@@ -131,8 +140,7 @@ public class Antiderivative implements MathOperation {
                 new Constant("f(u) = " + match.fDescription())));
 
         if (u.b().isZero()) {
-            // f(c) is constant in x
-            ASTNode value = tableF(match, new Linear(ZERO, u.c()), variable);
+            ASTNode value = tableF(match.kind(), match.exponent(), linearNode(u, variable));
             ASTNode scaled = Simplifier.simplify(new Mul(a, value));
             ASTNode answer = Simplifier.simplify(new Mul(scaled, new Var(variable)));
             steps.add(new Step("b = 0, so the integrand is constant in " + variable, answer));
@@ -143,21 +151,101 @@ public class Antiderivative implements MathOperation {
                 "Linear composition: ∫ f(bx + c) d" + variable
                         + " = (1/b) · F(bx + c) + C"));
 
-        ASTNode F = tableF(match, u, variable);
+        ASTNode F = tableF(match.kind(), match.exponent(), linearNode(u, variable));
         steps.add(new Step("Antiderivative F(u) evaluated at u = " + formatLinear(u, variable), F));
 
-        // (a/b) * F
         ASTNode scale = Simplifier.simplify(new Div(a, u.b()));
         ASTNode antideriv = Simplifier.simplify(new Mul(scale, F));
         if (!scale.equals(ONE)) {
-            steps.add(new Step(
-                    "Multiply by a/b = " + scale.toDisplay(),
-                    antideriv));
+            steps.add(new Step("Multiply by a/b = " + scale.toDisplay(), antideriv));
         } else {
             steps.add(new Step("Simplify", antideriv));
         }
 
         return finish(antideriv, steps);
+    }
+
+    /**
+     * Recognizes {@code remaining · f(g(x))} where {@code remaining / g'(x)} is a constant k,
+     * then returns {@code a·k·F(g(x)) + C}.
+     */
+    private static Result tryUSubstitution(Num a, ASTNode core, String variable, List<Step> steps) {
+        ASTNode normalized = rewriteDivisionsAsProducts(core);
+        List<ASTNode> factors = flattenMul(normalized);
+        if (factors.size() < 2) {
+            return null;
+        }
+
+        for (int i = 0; i < factors.size(); i++) {
+            OuterMatch outer = matchOuterF(factors.get(i), variable);
+            if (outer == null) {
+                continue;
+            }
+            ASTNode g = outer.inner();
+            if (!containsVariable(g, variable)) {
+                continue;
+            }
+            // Linear g is already handled by a·f(bx+c); still OK if we get here.
+
+            ASTNode remaining = productOfExcept(factors, i);
+            Result derivResult = Derivative.differentiate(g, variable);
+            if (!derivResult.isSuccess() || derivResult.getExact() == null) {
+                continue;
+            }
+            ASTNode gPrime = Simplifier.simplify(derivResult.getExact());
+
+            ASTNode ratio = Simplifier.simplify(new Div(remaining, gPrime));
+            if (!(ratio instanceof Num k)) {
+                continue;
+            }
+
+            steps.add(new Step(
+                    "u-substitution: let u = " + g.toDisplay(),
+                    new Constant("du/d" + variable + " = " + gPrime.toDisplay())));
+            steps.add(new Step(
+                    "Rewrite: integrand = " + (k.equals(ONE) ? "" : k.toDisplay() + "·")
+                            + "u' · f(u) with f(u) = " + outer.fDescription(),
+                    remaining));
+
+            ASTNode F = tableF(outer.kind(), outer.exponent(), g);
+            steps.add(new Step("∫ f(u) du = F(u); substitute back u = " + g.toDisplay(), F));
+
+            ASTNode scale = Simplifier.simplify(new Mul(a, k));
+            ASTNode antideriv = Simplifier.simplify(new Mul(scale, F));
+            if (!scale.equals(ONE)) {
+                steps.add(new Step("Multiply by constant factor " + scale.toDisplay(), antideriv));
+            } else {
+                steps.add(new Step("Simplify", antideriv));
+            }
+            return finish(antideriv, steps);
+        }
+        return null;
+    }
+
+    private static ASTNode productOfExcept(List<ASTNode> factors, int skipIndex) {
+        ASTNode product = null;
+        for (int i = 0; i < factors.size(); i++) {
+            if (i == skipIndex) {
+                continue;
+            }
+            product = product == null ? factors.get(i) : new Mul(product, factors.get(i));
+        }
+        return product == null ? ONE : Simplifier.simplify(product);
+    }
+
+    /** Turns {@code a/b} into {@code a*(1/b)} so u-sub can see both factors. */
+    private static ASTNode rewriteDivisionsAsProducts(ASTNode node) {
+        node = Simplifier.simplify(node);
+        return switch (node) {
+            case Div d -> Simplifier.simplify(new Mul(
+                    rewriteDivisionsAsProducts(d.left()),
+                    new Div(ONE, rewriteDivisionsAsProducts(d.right()))));
+            case Mul m -> Simplifier.simplify(new Mul(
+                    rewriteDivisionsAsProducts(m.left()),
+                    rewriteDivisionsAsProducts(m.right())));
+            case Neg n -> Simplifier.simplify(new Neg(rewriteDivisionsAsProducts(n.operand())));
+            default -> node;
+        };
     }
 
     private static Result constantIntegral(Num a, ASTNode core, String variable, List<Step> steps) {
@@ -235,68 +323,65 @@ public class Antiderivative implements MathOperation {
 
     private record MatchedForm(FormKind kind, Linear linear, Num exponent, String fDescription) {}
 
+    /** f(g) match where g may be any expression (used for u-sub). */
+    private record OuterMatch(FormKind kind, ASTNode inner, Num exponent, String fDescription) {}
+
     private static MatchedForm matchAfBxC(ASTNode core, String variable) {
+        OuterMatch outer = matchOuterF(core, variable);
+        if (outer == null) {
+            // bare linear: bx+c → treat as u^1
+            Linear linear = asLinear(core, variable);
+            if (linear != null && !linear.b().isZero()) {
+                return new MatchedForm(FormKind.POWER, linear, ONE, "u");
+            }
+            return null;
+        }
+        Linear linear = asLinear(outer.inner(), variable);
+        if (linear == null) {
+            return null;
+        }
+        return new MatchedForm(outer.kind(), linear, outer.exponent(), outer.fDescription());
+    }
+
+    /**
+     * Matches a single factor as {@code f(g)} for a known table entry.
+     * Does not require {@code g} to be linear.
+     */
+    private static OuterMatch matchOuterF(ASTNode core, String variable) {
         core = Simplifier.simplify(core);
 
-        // sec(u)^2 / csc(u)^2
         if (core instanceof Pow p && p.exponent() instanceof Num exp && exp.equals(Num.of(2))
                 && p.base() instanceof Func f) {
-            Linear linear = asLinear(f.argument(), variable);
-            if (linear != null) {
-                String name = f.name().toLowerCase(Locale.ROOT);
-                if ("sec".equals(name)) {
-                    return new MatchedForm(FormKind.SEC2, linear, null, "sec(u)^2");
-                }
-                if ("csc".equals(name)) {
-                    return new MatchedForm(FormKind.CSC2, linear, null, "csc(u)^2");
-                }
+            String name = f.name().toLowerCase(Locale.ROOT);
+            if ("sec".equals(name)) {
+                return new OuterMatch(FormKind.SEC2, f.argument(), null, "sec(u)^2");
+            }
+            if ("csc".equals(name)) {
+                return new OuterMatch(FormKind.CSC2, f.argument(), null, "csc(u)^2");
             }
         }
 
         if (core instanceof Func f) {
-            Linear linear = asLinear(f.argument(), variable);
-            if (linear == null) {
-                return null;
-            }
             return switch (f.name().toLowerCase(Locale.ROOT)) {
-                case "sin" -> new MatchedForm(FormKind.SIN, linear, null, "sin(u)");
-                case "cos" -> new MatchedForm(FormKind.COS, linear, null, "cos(u)");
-                case "sqrt" -> new MatchedForm(FormKind.SQRT, linear, null, "sqrt(u)");
+                case "sin" -> new OuterMatch(FormKind.SIN, f.argument(), null, "sin(u)");
+                case "cos" -> new OuterMatch(FormKind.COS, f.argument(), null, "cos(u)");
+                case "sqrt" -> new OuterMatch(FormKind.SQRT, f.argument(), null, "sqrt(u)");
                 default -> null;
             };
         }
 
-        // 1/(bx+c)
         if (core instanceof Div d) {
             ASTNode num = Simplifier.simplify(d.left());
             if (num instanceof Num n && n.equals(ONE)) {
-                Linear linear = asLinear(d.right(), variable);
-                if (linear != null) {
-                    return new MatchedForm(FormKind.RECIPROCAL, linear, null, "1/u");
-                }
+                return new OuterMatch(FormKind.RECIPROCAL, d.right(), null, "1/u");
             }
         }
 
-        // (bx+c)^n  or  x^n
         if (core instanceof Pow p && p.exponent() instanceof Num exp) {
             if (exp.equals(NEG_ONE)) {
-                Linear linear = asLinear(p.base(), variable);
-                if (linear != null) {
-                    return new MatchedForm(FormKind.RECIPROCAL, linear, null, "1/u");
-                }
+                return new OuterMatch(FormKind.RECIPROCAL, p.base(), null, "1/u");
             }
-            if (!exp.equals(NEG_ONE)) {
-                Linear linear = asLinear(p.base(), variable);
-                if (linear != null) {
-                    return new MatchedForm(FormKind.POWER, linear, exp, "u^" + exp.toDisplay());
-                }
-            }
-        }
-
-        // bare linear: bx+c  →  treat as u^1
-        Linear linear = asLinear(core, variable);
-        if (linear != null && !linear.b().isZero()) {
-            return new MatchedForm(FormKind.POWER, linear, ONE, "u");
+            return new OuterMatch(FormKind.POWER, p.base(), exp, "u^" + exp.toDisplay());
         }
 
         return null;
@@ -399,20 +484,18 @@ public class Antiderivative implements MathOperation {
 
     // ---- Table F(u) --------------------------------------------------------
 
-    private static ASTNode tableF(MatchedForm match, Linear u, String variable) {
-        ASTNode uExpr = linearNode(u, variable);
-        return switch (match.kind()) {
+    private static ASTNode tableF(FormKind kind, Num exponent, ASTNode uExpr) {
+        uExpr = Simplifier.simplify(uExpr);
+        return switch (kind) {
             case POWER -> {
-                Num n = match.exponent();
+                Num n = exponent;
                 Num nPlus1 = numAdd(n, ONE);
-                // u^(n+1) / (n+1)
                 yield Simplifier.simplify(new Div(new Pow(uExpr, nPlus1), nPlus1));
             }
             case RECIPROCAL -> Simplifier.simplify(new Func("ln", new Func("abs", uExpr)));
             case SIN -> Simplifier.simplify(new Neg(new Func("cos", uExpr)));
             case COS -> new Func("sin", uExpr);
             case SQRT -> {
-                // ∫ u^(1/2) = u^(3/2) / (3/2) = (2/3) u^(3/2)
                 ASTNode power = new Pow(uExpr, Num.of(3, 2));
                 yield Simplifier.simplify(new Mul(Num.of(2, 3), power));
             }
