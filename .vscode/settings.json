@@ -1,0 +1,8 @@
+{
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.import.maven.enabled": true,
+  "code-runner.executorMap": {
+    "java": "cd \"$workspaceRoot\" && echo DO NOT use Code Runner on this project. Use Run and Debug -^> Launch Calculator ^(ui.Launcher^), or double-click run.bat in the project root."
+  },
+  "code-runner.runInTerminal": true
+}
