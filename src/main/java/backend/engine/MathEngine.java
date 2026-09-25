@@ -6,6 +6,7 @@ import backend.math.algebra.Inequalities;
 import backend.math.algebra.Simplifier;
 import backend.math.calculus.differential.Derivative;
 import backend.math.calculus.differential.ImplicitDerivative;
+import backend.math.calculus.differential.TangentLine;
 import backend.math.calculus.integral.RiemannSum;
 import backend.math.calculus.limits.Limit;
 import backend.math.functions.Composition;
@@ -97,6 +98,7 @@ public class MathEngine {
             case "trigEquation" -> new TrigEquationSolver().solveFromInput(input);
             case "derivative" -> new Derivative().solveFromInput(input);
             case "implicitDerivative" -> new ImplicitDerivative().solveFromInput(input);
+            case "tangentLine" -> new TangentLine().solveFromInput(input);
             case "limit" -> new Limit().solveFromInput(input);
             case "riemannSum" -> new RiemannSum().solveFromInput(input);
             default -> parseAndSolve(op, input, operation);
