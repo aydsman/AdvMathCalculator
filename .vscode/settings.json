@@ -2,7 +2,7 @@
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.import.maven.enabled": true,
   "code-runner.executorMap": {
-    "java": "cd \"$workspaceRoot\" && echo DO NOT use Code Runner on this project. Use Run and Debug -^> Launch Calculator ^(ui.Launcher^), or double-click run.bat in the project root."
+    "java": "cd \"$workspaceRoot\" && echo Code Runner cannot build this multi-module project. Use Run and Debug -^> Launch Calculator, or run.bat."
   },
   "code-runner.runInTerminal": true
 }
