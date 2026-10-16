@@ -2,7 +2,6 @@ package backend.engine;
 
 import backend.models.Question;
 import backend.models.Result;
-import backend.parser.Parser;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +12,8 @@ import java.util.Set;
  * action key and stores the {@link Result} back on the question.
  *
  * <p>Unknown keys, parse errors, and unexpected runtime exceptions all become a
- * failed result, so callers never need their own error handling.
+ * failed result carrying the exception message, so callers never need their own
+ * error handling.
  */
 public class MathEngine {
 
@@ -48,8 +48,6 @@ public class MathEngine {
         Result result;
         try {
             result = operation.solve(question.getInput());
-        } catch (Parser.ParseException e) {
-            result = Result.failure("Could not parse input: " + e.getMessage());
         } catch (RuntimeException e) {
             result = Result.failure(e.getMessage() != null ? e.getMessage() : "Error while solving");
         }

@@ -64,7 +64,7 @@ class MathEngineTest {
         Result result = engine.solve(question);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("Could not parse input"));
+        assertTrue(result.getError().startsWith("Expected"), result.getError());
     }
 
     @Test
