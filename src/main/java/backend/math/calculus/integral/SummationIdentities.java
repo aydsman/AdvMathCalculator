@@ -1,12 +1,12 @@
 package backend.math.calculus.integral;
 
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 /**
  * Closed forms for {@code Σ_{k=0}^{n-1} k^m} as expressions in {@code n}.

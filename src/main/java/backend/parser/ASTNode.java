@@ -50,6 +50,35 @@ public sealed interface ASTNode
             return numerator.signum() == 0;
         }
 
+        public Num plus(Num other) {
+            return new Num(numerator.multiply(other.denominator).add(other.numerator.multiply(denominator)),
+                    denominator.multiply(other.denominator));
+        }
+
+        public Num minus(Num other) {
+            return plus(other.negate());
+        }
+
+        public Num times(Num other) {
+            return new Num(numerator.multiply(other.numerator), denominator.multiply(other.denominator));
+        }
+
+        /** @throws ArithmeticException if {@code other} is zero */
+        public Num dividedBy(Num other) {
+            return new Num(numerator.multiply(other.denominator), denominator.multiply(other.numerator));
+        }
+
+        public Num negate() {
+            return new Num(numerator.negate(), denominator);
+        }
+
+        /** @throws ArithmeticException if this is zero and {@code exponent} is negative */
+        public Num pow(int exponent) {
+            BigInteger num = numerator.pow(Math.abs(exponent));
+            BigInteger den = denominator.pow(Math.abs(exponent));
+            return exponent < 0 ? new Num(den, num) : new Num(num, den);
+        }
+
         public double toDouble() {
             return new BigDecimal(numerator)
                     .divide(new BigDecimal(denominator), MathContext.DECIMAL64)

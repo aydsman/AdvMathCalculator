@@ -8,8 +8,8 @@ import backend.math.functions.FunctionUtils;
 import backend.models.DefiniteIntegral;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Num;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.List;

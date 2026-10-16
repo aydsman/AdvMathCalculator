@@ -4,7 +4,6 @@ import backend.engine.MathOperation;
 import backend.math.functions.FunctionUtils;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -15,6 +14,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.math.BigInteger;
@@ -85,7 +85,7 @@ public class ExpressionEvaluator implements MathOperation {
 
         try {
             Num exact = evaluateNumeric(substituted);
-            Double decimal = exact.denominator().equals(BigInteger.ONE) ? null : exact.toDouble();
+            Double decimal = exact.isInteger() ? null : exact.toDouble();
             return Result.of(exact, decimal, steps);
         } catch (ApproximateEvaluationException e) {
             return Result.of(substituted, e.value, steps);
@@ -142,16 +142,16 @@ public class ExpressionEvaluator implements MathOperation {
             case Num n -> n;
             case Var v -> throw new IllegalArgumentException("Undefined variable: " + v.name());
             case Constant c -> throw new IllegalArgumentException("Cannot evaluate constant: " + c.name());
-            case Neg n -> numNeg(evaluateNumeric(n.operand()));
-            case Add a -> numAdd(evaluateNumeric(a.left()), evaluateNumeric(a.right()));
-            case Sub s -> numSub(evaluateNumeric(s.left()), evaluateNumeric(s.right()));
-            case Mul m -> numMul(evaluateNumeric(m.left()), evaluateNumeric(m.right()));
+            case Neg n -> evaluateNumeric(n.operand()).negate();
+            case Add a -> evaluateNumeric(a.left()).plus(evaluateNumeric(a.right()));
+            case Sub s -> evaluateNumeric(s.left()).minus(evaluateNumeric(s.right()));
+            case Mul m -> evaluateNumeric(m.left()).times(evaluateNumeric(m.right()));
             case Div d -> {
                 Num divisor = evaluateNumeric(d.right());
                 if (divisor.isZero()) {
                     throw new ArithmeticException("Division by zero");
                 }
-                yield numDiv(evaluateNumeric(d.left()), divisor);
+                yield evaluateNumeric(d.left()).dividedBy(divisor);
             }
             case Pow p -> evaluatePow(evaluateNumeric(p.base()), p.exponent());
             case Func f -> evaluateFunction(f.name(), evaluateNumeric(f.argument()));
@@ -224,7 +224,7 @@ public class ExpressionEvaluator implements MathOperation {
         if (exponentNode instanceof Num expNum && expNum.isInteger()) {
             int exp = expNum.numerator().intValueExact();
             if (Math.abs(exp) <= 16) {
-                return numIntPow(base, exp);
+                return base.pow(exp);
             }
         }
         double value = Math.pow(base.toDouble(), evaluateNumeric(exponentNode).toDouble());
@@ -233,9 +233,7 @@ public class ExpressionEvaluator implements MathOperation {
 
     private static Num evaluateFunction(String name, Num argument) {
         if ("abs".equalsIgnoreCase(name)) {
-            return argument.numerator().signum() < 0
-                    ? new Num(argument.numerator().negate(), argument.denominator())
-                    : argument;
+            return argument.numerator().signum() < 0 ? argument.negate() : argument;
         }
         double x = argument.toDouble();
         double value = switch (name.toLowerCase(Locale.ROOT)) {
@@ -257,42 +255,6 @@ public class ExpressionEvaluator implements MathOperation {
             default -> throw new IllegalArgumentException("Cannot evaluate function: " + name);
         };
         throw new ApproximateEvaluationException(value);
-    }
-
-    private static Num numIntPow(Num base, int exp) {
-        if (exp == 0) {
-            return Num.of(1);
-        }
-        BigInteger num = base.numerator().pow(Math.abs(exp));
-        BigInteger den = base.denominator().pow(Math.abs(exp));
-        if (exp < 0) {
-            return new Num(den, num);
-        }
-        return new Num(num, den);
-    }
-
-    private static Num numAdd(Num a, Num b) {
-        return new Num(
-                a.numerator().multiply(b.denominator()).add(b.numerator().multiply(a.denominator())),
-                a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numSub(Num a, Num b) {
-        return new Num(
-                a.numerator().multiply(b.denominator()).subtract(b.numerator().multiply(a.denominator())),
-                a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numMul(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.numerator()), a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numDiv(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.denominator()), a.denominator().multiply(b.numerator()));
-    }
-
-    private static Num numNeg(Num a) {
-        return new Num(a.numerator().negate(), a.denominator());
     }
 
     private static final class ApproximateEvaluationException extends RuntimeException {

@@ -3,8 +3,8 @@ package backend.math.trig;
 import backend.engine.MathOperation;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Constant;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;

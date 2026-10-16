@@ -3,7 +3,6 @@ package backend.math.algebra;
 import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Neg;
@@ -11,6 +10,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -361,7 +361,7 @@ public class Factoring implements ExpressionOperation {
             if (term.negative()) {
                 coeff = new Num(coeff.numerator().negate(), coeff.denominator());
             }
-            poly.merge(degree, coeff, Factoring::numAdd);
+            poly.merge(degree, coeff, Num::plus);
         }
         return poly;
     }
@@ -397,13 +397,6 @@ public class Factoring implements ExpressionOperation {
             }
         }
         return sum == null ? ZERO : sum;
-    }
-
-    private static Num numAdd(Num a, Num b) {
-        BigInteger num = a.numerator().multiply(b.denominator())
-                .add(b.numerator().multiply(a.denominator()));
-        BigInteger den = a.denominator().multiply(b.denominator());
-        return new Num(num, den);
     }
 
     private static List<Integer> positiveDivisors(int n) {

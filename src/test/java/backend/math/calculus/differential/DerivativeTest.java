@@ -3,6 +3,7 @@ package backend.math.calculus.differential;
 import backend.engine.MathEngine;
 import backend.models.Question;
 import backend.models.Result;
+import backend.parser.Parser;
 import backend.models.Step;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,23 @@ class DerivativeTest {
         @MethodSource("backend.math.calculus.differential.DerivativeTest#sumRuleCases")
         void sums(String input, String expected) {
             assertEquals(expected, derivative(input));
+        }
+    }
+
+    @Nested
+    class UnsimplifiedDifferences {
+
+        @ParameterizedTest(name = "d/dx({0}) = {1}")
+        @CsvSource(delimiter = '|', value = {
+                "x^2 - 3*x | 2*x - 3",
+                "5 - x | -1",
+                "x^3 - x^2 + x | 3*x^2 - 2*x + 1",
+                "-(x^2 + x) | -(2*x + 1)",
+        })
+        void keepsSignOfSubtractedTerms(String input, String expected) {
+            Result r = Derivative.differentiate(Parser.parse(input), "x");
+            assertTrue(r.isSuccess(), r.getError());
+            assertEquals(expected, r.getExact().toDisplay());
         }
     }
 
@@ -258,7 +276,7 @@ class DerivativeTest {
                 Arguments.of("x + x + x", "3"),
                 Arguments.of("0*x + 5", "0"),
                 Arguments.of("sin(x) + cos(x)", "cos(x) - sin(x)"),
-                Arguments.of("sin(x)-cos(x)", "cos(x) - sin(x)"),
+                Arguments.of("sin(x)-cos(x)", "cos(x) + sin(x)"),
                 Arguments.of("2*sin(x) + 3*cos(x)", "2*cos(x) - 3*sin(x)"),
                 Arguments.of("tan(x) + 1", "sec(x)^2"),
                 Arguments.of("sin(2*x) + cos(2*x)", "2*cos(2*x) - 2*sin(2*x)"),

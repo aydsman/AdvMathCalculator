@@ -1,11 +1,11 @@
 package backend.math.calculus.differential;
 
 import backend.engine.ExpressionOperation;
+import backend.math.Expressions;
 import backend.math.algebra.EquationSolver;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -16,6 +16,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -199,7 +200,8 @@ public class ImplicitDerivative implements ExpressionOperation {
     private static DyDxForm splitDyDx(ASTNode node) {
         ASTNode without = ZERO;
         ASTNode coeff = ZERO;
-        for (ASTNode term : flattenSum(node)) {
+        for (ASTNode term : Expressions.terms(node)) {
+            term = term instanceof Neg ? Simplifier.simplify(term) : term;
             if (containsDyDx(term)) {
                 coeff = Simplifier.simplify(new Add(coeff, dyDxCoefficient(term)));
             } else {
@@ -248,26 +250,7 @@ public class ImplicitDerivative implements ExpressionOperation {
         };
     }
 
-    private static List<ASTNode> flattenSum(ASTNode node) {
-        List<ASTNode> terms = new ArrayList<>();
-        flattenSumInto(node, terms);
-        return terms;
-    }
 
-    private static void flattenSumInto(ASTNode node, List<ASTNode> out) {
-        switch (node) {
-            case Add a -> {
-                flattenSumInto(a.left(), out);
-                flattenSumInto(a.right(), out);
-            }
-            case Sub s -> {
-                flattenSumInto(s.left(), out);
-                out.add(Simplifier.simplify(new Neg(s.right())));
-            }
-            case Neg n -> out.add(Simplifier.simplify(node));
-            default -> out.add(node);
-        }
-    }
 
     private static boolean isDyDx(ASTNode node) {
         return node instanceof Constant c && "dy/dx".equals(c.name());

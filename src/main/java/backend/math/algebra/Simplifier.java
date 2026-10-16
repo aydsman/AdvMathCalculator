@@ -3,7 +3,6 @@ package backend.math.algebra;
 import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -14,6 +13,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.math.BigInteger;
@@ -75,13 +75,13 @@ public class Simplifier implements ExpressionOperation {
     private static ASTNode simplifyNeg(ASTNode operand) {
         ASTNode a = simplify(operand);
         if (a instanceof Num n) {
-            return numNeg(n);
+            return n.negate();
         }
         if (a instanceof Neg inner) {
             return inner.operand();
         }
         if (a instanceof Mul m && m.left() instanceof Num c && isNegative(c)) {
-            return simplify(new Mul(numNeg(c), m.right()));
+            return simplify(new Mul(c.negate(), m.right()));
         }
         if (a instanceof Div d) {
             if (d.left() instanceof Neg) {
@@ -104,16 +104,16 @@ public class Simplifier implements ExpressionOperation {
         for (ASTNode term : terms) {
             ASTNode simplified = simplify(term);
             if (simplified instanceof Num n) {
-                constant = numAdd(constant, n);
+                constant = constant.plus(n);
                 continue;
             }
             Term split = splitCoefficient(simplified);
             ASTNode base = simplify(split.base());
             if (base instanceof Num bn) {
-                constant = numAdd(constant, numMul(split.coeff(), bn));
+                constant = constant.plus(split.coeff().times(bn));
                 continue;
             }
-            combined.merge(base, split.coeff(), Simplifier::numAdd);
+            combined.merge(base, split.coeff(), Num::plus);
         }
 
         List<ASTNode> resultTerms = new ArrayList<>();
@@ -170,9 +170,9 @@ public class Simplifier implements ExpressionOperation {
             if (term instanceof Neg neg) {
                 sum = new Sub(sum, neg.operand());
             } else if (term instanceof Mul m && m.left() instanceof Num c && isNegative(c)) {
-                sum = new Sub(sum, new Mul(numNeg(c), m.right()));
+                sum = new Sub(sum, new Mul(c.negate(), m.right()));
             } else if (term instanceof Num n && isNegative(n)) {
-                sum = new Sub(sum, numNeg(n));
+                sum = new Sub(sum, n.negate());
             } else {
                 sum = new Add(sum, term);
             }
@@ -185,7 +185,7 @@ public class Simplifier implements ExpressionOperation {
     private static Term splitCoefficient(ASTNode node) {
         if (node instanceof Neg neg) {
             Term inner = splitCoefficient(neg.operand());
-            return new Term(numNeg(inner.coeff()), inner.base());
+            return new Term(inner.coeff().negate(), inner.base());
         }
         if (node instanceof Mul m) {
             if (m.left() instanceof Num c) {
@@ -214,7 +214,7 @@ public class Simplifier implements ExpressionOperation {
                 if (n.isZero()) {
                     return ZERO;
                 }
-                coefficient = numMul(coefficient, n);
+                coefficient = coefficient.times(n);
                 continue;
             }
             ASTNode base;
@@ -308,7 +308,7 @@ public class Simplifier implements ExpressionOperation {
             return ZERO;
         }
         if (a instanceof Num an && b instanceof Num bn && !bn.isZero()) {
-            return numDiv(an, bn);
+            return an.dividedBy(bn);
         }
         if (a.equals(b)) {
             return ONE;
@@ -317,7 +317,7 @@ public class Simplifier implements ExpressionOperation {
         ScaledTerm numerator = extractScaledTerm(a);
         ScaledTerm denominator = extractScaledTerm(b);
         if (!numerator.scale().equals(ONE) || !denominator.scale().equals(ONE)) {
-            Num scale = numDiv(numerator.scale(), denominator.scale());
+            Num scale = numerator.scale().dividedBy(denominator.scale());
             ASTNode inner = simplifyDiv(numerator.rest(), denominator.rest());
             if (scale.equals(ONE)) {
                 return inner;
@@ -343,16 +343,16 @@ public class Simplifier implements ExpressionOperation {
         }
         if (node instanceof Neg n) {
             ScaledTerm inner = extractScaledTerm(n.operand());
-            return new ScaledTerm(numNeg(inner.scale()), inner.rest());
+            return new ScaledTerm(inner.scale().negate(), inner.rest());
         }
         if (node instanceof Mul m) {
             if (m.left() instanceof Num c) {
                 ScaledTerm inner = extractScaledTerm(m.right());
-                return new ScaledTerm(numMul(c, inner.scale()), inner.rest());
+                return new ScaledTerm(c.times(inner.scale()), inner.rest());
             }
             if (m.right() instanceof Num c) {
                 ScaledTerm inner = extractScaledTerm(m.left());
-                return new ScaledTerm(numMul(c, inner.scale()), inner.rest());
+                return new ScaledTerm(c.times(inner.scale()), inner.rest());
             }
         }
         return new ScaledTerm(ONE, node);
@@ -401,7 +401,7 @@ public class Simplifier implements ExpressionOperation {
             }
             case "abs" -> {
                 if (a instanceof Num n) {
-                    return isNegative(n) ? numNeg(n) : n;
+                    return isNegative(n) ? n.negate() : n;
                 }
                 if (a instanceof Neg n) {
                     return simplifyFunc("abs", n.operand());
@@ -431,27 +431,6 @@ public class Simplifier implements ExpressionOperation {
     }
 
     // ---- Exact rational helpers -----------------------------------------
-
-    private static Num numAdd(Num a, Num b) {
-        BigInteger numerator = a.numerator().multiply(b.denominator())
-                .add(b.numerator().multiply(a.denominator()));
-        BigInteger denominator = a.denominator().multiply(b.denominator());
-        return new Num(numerator, denominator);
-    }
-
-    private static Num numMul(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.numerator()),
-                a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numDiv(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.denominator()),
-                a.denominator().multiply(b.numerator()));
-    }
-
-    private static Num numNeg(Num a) {
-        return new Num(a.numerator().negate(), a.denominator());
-    }
 
     private static ASTNode numPow(Num base, Num integerExponent) {
         BigInteger exp = integerExponent.numerator();

@@ -1,10 +1,10 @@
 package backend.math.calculus.differential;
 
 import backend.engine.ExpressionOperation;
+import backend.math.Expressions;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -15,6 +15,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -141,8 +142,8 @@ public class Derivative implements ExpressionOperation {
             case Constant c -> DiffResult.of(ZERO, "Constant rule: d/d" + variable + "[" + c.name() + "] = 0");
             case Var v -> diffVariable(v, variable);
             case Neg n -> diffNeg(n.operand(), variable);
-            case Add a -> diffSum(flattenSum(node), variable);
-            case Sub s -> diffSum(flattenSum(new Add(s.left(), new Neg(s.right()))), variable);
+            case Add a -> diffSum(Expressions.terms(node), variable);
+            case Sub s -> diffSum(Expressions.terms(node), variable);
             case Mul m -> diffProduct(m, variable);
             case Div d -> diffQuotient(d, variable);
             case Pow p -> diffPower(p, variable);
@@ -384,24 +385,5 @@ public class Derivative implements ExpressionOperation {
         return new DiffResult(derivative, steps);
     }
 
-    private static List<ASTNode> flattenSum(ASTNode node) {
-        List<ASTNode> terms = new ArrayList<>();
-        flattenSumInto(node, terms);
-        return terms;
-    }
 
-    private static void flattenSumInto(ASTNode node, List<ASTNode> out) {
-        switch (node) {
-            case Add a -> {
-                flattenSumInto(a.left(), out);
-                flattenSumInto(a.right(), out);
-            }
-            case Sub s -> {
-                flattenSumInto(s.left(), out);
-                flattenSumInto(new Neg(s.right()), out);
-            }
-            case Neg n -> flattenSumInto(n.operand(), out);
-            default -> out.add(node);
-        }
-    }
 }

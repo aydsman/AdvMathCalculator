@@ -5,7 +5,6 @@ import backend.math.algebra.EquationSolver;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Func;
@@ -14,6 +13,7 @@ import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;
