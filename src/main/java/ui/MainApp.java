@@ -12,6 +12,7 @@ import backend.math.functions.InverseFunction;
 import backend.math.functions.Transformations;
 import backend.math.calculus.differential.Derivative;
 import backend.math.calculus.differential.ImplicitDerivative;
+import backend.math.calculus.differential.TangentLine;
 import backend.math.calculus.integral.Antiderivative;
 import backend.math.calculus.integral.RiemannSum;
 import backend.math.calculus.limits.Limit;
@@ -64,6 +65,7 @@ public class MainApp extends Application {
 
         engine.register("derivative", new Derivative());
         engine.register("implicitDerivative", new ImplicitDerivative());
+        engine.register("tangentLine", new TangentLine());
         engine.register("limit", new Limit());
         engine.register("riemannSum", new RiemannSum());
         engine.register("indefiniteIntegral", new Antiderivative());
@@ -132,7 +134,8 @@ public class MainApp extends Application {
                         ButtonNode.dropdown("Differential",
                                 ButtonNode.action("Limit", "limit"),
                                 ButtonNode.action("Derivative", "derivative"),
-                                ButtonNode.action("Implicit derivative", "implicitDerivative")),
+                                ButtonNode.action("Implicit derivative", "implicitDerivative"),
+                                ButtonNode.action("Tangent line", "tangentLine")),
                         ButtonNode.dropdown("Integral",
                                 ButtonNode.action("Riemann sum", "riemannSum"),
                                 ButtonNode.action("Indefinite", "indefiniteIntegral"),

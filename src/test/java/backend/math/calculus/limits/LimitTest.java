@@ -69,11 +69,13 @@ class LimitTest {
     }
 
     @Test
-    void sinOverXNeedsLhopital() {
+    void sinOverXUsesLhopital() {
         Result result = solve("lim x->0 sin(x)/x");
 
-        assertFalse(result.isSuccess());
-        assertTrue(result.getError().toLowerCase().contains("l'h"));
+        assertTrue(result.isSuccess(), result.getError());
+        assertEquals("1", result.getExact().toDisplay());
+        assertTrue(result.getSteps().stream()
+                .anyMatch(step -> step.getDescription().toLowerCase().contains("l'h")));
     }
 
     @Test
@@ -85,11 +87,11 @@ class LimitTest {
     }
 
     @Test
-    void infinityNotSupportedYet() {
+    void infinityOfOneOverXIsZero() {
         Result result = solve("lim x->inf 1/x");
 
-        assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("not supported"));
+        assertTrue(result.isSuccess(), result.getError());
+        assertEquals("0", result.getExact().toDisplay());
     }
 
     @Test
@@ -139,40 +141,50 @@ class LimitTest {
             assertEquals("1/sqrt(2)", result.getExact().toDisplay());
         }
 
-        @ParameterizedTest(name = "{0}")
-        @CsvSource({
-                "lim x->0 sin(x)/x",
-                "lim x->1 (x^(1/3)-1)/(sqrt(x)-1)",
-        })
-        void needsFutureMethod(String input) {
-            Result result = solve(input);
-            assertFalse(result.isSuccess());
-            assertTrue(result.getError().toLowerCase().contains("l'h")
-                    || result.getError().contains("not supported"));
+        @Test
+        void cubeRootOverSqrtUsesLhopital() {
+            Result result = solve("lim x->1 (x^(1/3)-1)/(sqrt(x)-1)");
+            assertTrue(result.isSuccess(), result.getError());
+            // (1/3)x^(-2/3) / ((1/2)x^(-1/2)) at 1 = (1/3)/(1/2) = 2/3
+            assertEquals("2/3", result.getExact().toDisplay());
         }
 
-        @ParameterizedTest(name = "{0}")
+        @ParameterizedTest(name = "{0} = {1}")
         @CsvSource({
-                "lim x->inf 1/x",
-                "lim x->-inf sqrt(x-2)-sqrt(x)",
-                "lim x->inf (x^4-10)/(4*x^3+x)",
+                "lim x->inf 1/x, 0",
+                "lim x->inf (x+5)/(2*x^2+1), 0",
+                "lim x->inf (3*x^3+x^2-2)/(x^2+x-2*x^3+1), -3/2",
         })
-        void infinityNotSupported(String input) {
+        void infinityLimits(String input, String expected) {
             Result result = solve(input);
-            assertFalse(result.isSuccess());
-            assertTrue(result.getError().contains("not supported"));
+            assertTrue(result.isSuccess(), result.getError());
+            assertEquals(expected, result.getExact().toDisplay());
         }
 
         @Test
-        void absoluteValueNotSupported() {
+        void infinityDivergesWhenNumeratorDegreeWins() {
+            Result result = solve("lim x->inf (x^4-10)/(4*x^3+x)");
+            assertTrue(result.isSuccess(), result.getError());
+            assertEquals("\u221e", result.getExact().toDisplay());
+        }
+
+        @Test
+        void absoluteValueDirectSubstitution() {
             Result result = solve("lim x->-3 abs(x+1)+3/x");
-            assertFalse(result.isSuccess());
-            assertTrue(result.getError().contains("abs"));
+            assertTrue(result.isSuccess(), result.getError());
+            assertEquals("1", result.getExact().toDisplay());
         }
 
         @Test
-        void oneSidedNotSupported() {
+        void oneSidedSqrtAtEndpoint() {
             Result result = solve("lim x->1- sqrt(3-3*x)");
+            assertTrue(result.isSuccess(), result.getError());
+            assertEquals("0", result.getExact().toDisplay());
+        }
+
+        @Test
+        void oneSidedSqrtFromUndefinedSideFails() {
+            Result result = solve("lim x->1+ sqrt(3-3*x)");
             assertFalse(result.isSuccess());
         }
     }

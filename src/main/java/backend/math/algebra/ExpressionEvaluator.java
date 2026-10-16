@@ -207,6 +207,7 @@ public class ExpressionEvaluator implements MathOperation {
             case "sec" -> 1 / Math.cos(argument);
             case "csc" -> 1 / Math.sin(argument);
             case "cot" -> 1 / Math.tan(argument);
+            case "abs" -> Math.abs(argument);
             case "sqrt" -> {
                 if (argument < 0) {
                     throw new ArithmeticException("Square root of a negative number");
@@ -235,6 +236,11 @@ public class ExpressionEvaluator implements MathOperation {
     }
 
     private static Num evaluateFunction(String name, Num argument) {
+        if ("abs".equalsIgnoreCase(name)) {
+            return argument.numerator().signum() < 0
+                    ? new Num(argument.numerator().negate(), argument.denominator())
+                    : argument;
+        }
         double x = argument.toDouble();
         double value = switch (name.toLowerCase(Locale.ROOT)) {
             case "sin" -> Math.sin(x);

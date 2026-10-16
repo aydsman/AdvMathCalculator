@@ -87,8 +87,8 @@ public class Derivative implements MathOperation {
         return Result.of(simplified, null, steps);
     }
 
-    /** Package helper for sibling differential modules. */
-    static ASTNode derivativeOf(ASTNode expression, String variable) {
+    /** Helper for sibling modules (implicit derivatives, L'Hôpital, tangent lines). */
+    public static ASTNode derivativeOf(ASTNode expression, String variable) {
         return fullySimplify(diff(Simplifier.simplify(expression), variable).derivative());
     }
 
@@ -348,6 +348,7 @@ public class Derivative implements MathOperation {
             case "cot" -> Simplifier.simplify(new Neg(new Pow(new Func("csc", arg), Num.of(2))));
             case "ln", "log" -> Simplifier.simplify(new Div(ONE, arg));
             case "sqrt" -> Simplifier.simplify(new Div(ONE, new Mul(Num.of(2), new Func("sqrt", arg))));
+            case "abs" -> Simplifier.simplify(new Div(arg, new Func("abs", arg)));
             default -> throw new UnsupportedOperationException("Derivative not supported for: " + name);
         };
 
@@ -360,6 +361,7 @@ public class Derivative implements MathOperation {
             case "cot" -> "cot";
             case "ln", "log" -> "ln";
             case "sqrt" -> "sqrt";
+            case "abs" -> "abs";
             default -> name;
         };
 
