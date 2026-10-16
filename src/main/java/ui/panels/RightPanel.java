@@ -153,11 +153,12 @@ public class RightPanel extends BorderPane {
             return;
         }
         ButtonNode operation = categoryButton.getSelected();
-        String actionKey = operation != null ? operation.getActionKey() : "parse";
-        String category = categoryButton.getSelectedCategory() != null
-                ? categoryButton.getSelectedCategory() : "General";
-
-        Question question = new Question(category, actionKey, text);
+        if (operation == null) {
+            categoryButton.show();
+            return;
+        }
+        Question question = new Question(categoryButton.getSelectedCategory(),
+                operation.getActionKey(), operation.getLabel(), text);
         if (onSubmit != null) {
             onSubmit.accept(question);
         }

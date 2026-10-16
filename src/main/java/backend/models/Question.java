@@ -1,24 +1,25 @@
 package backend.models;
 
 /**
- * A single user request flowing through the app.
- *
- * <p>Carries the {@code category} (e.g. "Calculus") and {@code operation}
- * (the action key chosen from the button tree, e.g. "derivative") together
- * with the raw {@code input} expression. The {@link Result} is attached once
- * the {@code MathEngine} has solved it, so a Question represents both the ask
- * and, later, its answer.
+ * A user request: the operation's action key (e.g. {@code "derivative"}), its menu
+ * label for display, and the raw input. The engine attaches the {@link Result}.
  */
 public class Question {
 
     private final String category;
     private final String operation;
+    private final String operationLabel;
     private final String input;
     private Result result;
 
     public Question(String category, String operation, String input) {
+        this(category, operation, operation, input);
+    }
+
+    public Question(String category, String operation, String operationLabel, String input) {
         this.category = category;
         this.operation = operation;
+        this.operationLabel = operationLabel;
         this.input = input;
     }
 
@@ -28,6 +29,10 @@ public class Question {
 
     public String getOperation() {
         return operation;
+    }
+
+    public String getOperationLabel() {
+        return operationLabel;
     }
 
     public String getInput() {

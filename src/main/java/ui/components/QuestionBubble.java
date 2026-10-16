@@ -20,7 +20,7 @@ public class QuestionBubble extends VBox {
         this.question = question;
         getStyleClass().add("bubble");
 
-        Label header = new Label(question.getCategory() + "  ·  " + question.getOperation());
+        Label header = new Label(question.getCategory() + "  ·  " + question.getOperationLabel());
         header.getStyleClass().add("bubble-header");
 
         Label input = new Label(question.getInput());

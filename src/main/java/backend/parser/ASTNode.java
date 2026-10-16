@@ -125,13 +125,18 @@ public sealed interface ASTNode
             };
             case Var v -> v.name();
             case Neg(ASTNode a) -> "-" + wrap(a, 3);
-            case Add(ASTNode l, ASTNode r) -> wrap(l, 1) + " + " + wrap(r, 1);
-            case Sub(ASTNode l, ASTNode r) -> wrap(l, 1) + " - " + wrap(r, 2);
+            case Add(ASTNode l, ASTNode r) -> joinSigned(wrap(l, 1), " + ", " - ", wrap(r, 1));
+            case Sub(ASTNode l, ASTNode r) -> joinSigned(wrap(l, 1), " - ", " + ", wrap(r, 2));
             case Mul m -> formatProduct(m);
             case Div(ASTNode l, ASTNode r) -> wrap(l, 2) + "/" + wrap(r, 3);
             case Pow(ASTNode b, ASTNode e) -> wrap(b, 5) + "^" + wrap(e, 4);
             case Func(String name, ASTNode arg) -> name + "(" + format(arg) + ")";
         };
+    }
+
+    /** Folds a leading minus on the right operand into the operator: {@code a + -b} reads {@code a - b}. */
+    private static String joinSigned(String left, String operator, String flipped, String right) {
+        return right.startsWith("-") ? left + flipped + right.substring(1) : left + operator + right;
     }
 
     /**
