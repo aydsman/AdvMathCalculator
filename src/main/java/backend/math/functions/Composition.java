@@ -4,8 +4,8 @@ import backend.engine.MathOperation;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Constant;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,11 +14,7 @@ import java.util.List;
 public class Composition implements MathOperation {
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter two functions: f(x)=..., g(x)=...");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         List<Step> steps = new ArrayList<>();
         List<FunctionUtils.FunctionDef> defs = FunctionUtils.parseDefinitions(raw);
         FunctionUtils.FunctionDef f = defs.get(0);

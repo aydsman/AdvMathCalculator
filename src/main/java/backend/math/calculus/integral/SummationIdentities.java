@@ -1,12 +1,12 @@
 package backend.math.calculus.integral;
 
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 /**
  * Closed forms for {@code Σ_{k=0}^{n-1} k^m} as expressions in {@code n}.
@@ -45,7 +45,7 @@ final class SummationIdentities {
 
     static String sumNotation(int power) {
         String superscript = power == 1 ? "" : "^" + power;
-        return "\u03A3_{k=0}^{n-1} k" + superscript;
+        return "Σ_{k=0}^{n-1} k" + superscript;
     }
 
     private static Num one() {

@@ -1,14 +1,14 @@
 package ui.visualizer;
 
 import backend.math.algebra.ExpressionEvaluator;
+import backend.math.algebra.Simplifier;
+import backend.math.calculus.differential.Derivative;
 import backend.math.calculus.integral.RiemannSum;
 import backend.math.functions.FunctionUtils;
 import backend.models.Question;
-import backend.math.algebra.Simplifier;
-import backend.math.calculus.differential.Derivative;
 import backend.models.Result;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Num;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;

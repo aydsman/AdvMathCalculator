@@ -1,9 +1,8 @@
 package backend.math.algebra;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -14,27 +13,33 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
+import backend.parser.Parser;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Algebraic simplifier. Folds exact rational arithmetic, applies identity rules
  * (x+0, x*1, x^1, x^0, ...), combines like terms in sums, and combines powers of a
  * common base in products.
  *
- * <p>The static {@link #simplify(ASTNode)} method is the workhorse and is reused by
- * other modules (e.g. to tidy a derivative's output); {@link #solve(ASTNode)} wraps it
- * with a {@link Result} for the engine.
+ * <p>{@link #simplify(ASTNode)} is shared by the other modules to tidy their output.
  */
-public class Simplifier implements MathOperation {
+public class Simplifier implements ExpressionOperation {
 
     private static final Num ZERO = Num.of(0);
     private static final Num ONE = Num.of(1);
     private static final Num NEG_ONE = Num.of(-1);
+
+    @Override
+    public Result solve(String input) {
+        return solve(Parser.parse(input));
+    }
 
     @Override
     public Result solve(ASTNode input) {
@@ -71,13 +76,13 @@ public class Simplifier implements MathOperation {
     private static ASTNode simplifyNeg(ASTNode operand) {
         ASTNode a = simplify(operand);
         if (a instanceof Num n) {
-            return numNeg(n);
+            return n.negate();
         }
         if (a instanceof Neg inner) {
             return inner.operand();
         }
         if (a instanceof Mul m && m.left() instanceof Num c && isNegative(c)) {
-            return simplify(new Mul(numNeg(c), m.right()));
+            return simplify(new Mul(c.negate(), m.right()));
         }
         if (a instanceof Div d) {
             if (d.left() instanceof Neg) {
@@ -87,8 +92,6 @@ public class Simplifier implements MathOperation {
         }
         return new Neg(a);
     }
-
-    // ---- Sums (handles Add and, via rewriting, Sub) ----------------------
 
     private static ASTNode simplifySum(Add node) {
         List<ASTNode> terms = new ArrayList<>();
@@ -100,16 +103,16 @@ public class Simplifier implements MathOperation {
         for (ASTNode term : terms) {
             ASTNode simplified = simplify(term);
             if (simplified instanceof Num n) {
-                constant = numAdd(constant, n);
+                constant = constant.plus(n);
                 continue;
             }
             Term split = splitCoefficient(simplified);
             ASTNode base = simplify(split.base());
             if (base instanceof Num bn) {
-                constant = numAdd(constant, numMul(split.coeff(), bn));
+                constant = constant.plus(split.coeff().times(bn));
                 continue;
             }
-            combined.merge(base, split.coeff(), Simplifier::numAdd);
+            combined.merge(base, split.coeff(), Num::plus);
         }
 
         List<ASTNode> resultTerms = new ArrayList<>();
@@ -166,9 +169,9 @@ public class Simplifier implements MathOperation {
             if (term instanceof Neg neg) {
                 sum = new Sub(sum, neg.operand());
             } else if (term instanceof Mul m && m.left() instanceof Num c && isNegative(c)) {
-                sum = new Sub(sum, new Mul(numNeg(c), m.right()));
+                sum = new Sub(sum, new Mul(c.negate(), m.right()));
             } else if (term instanceof Num n && isNegative(n)) {
-                sum = new Sub(sum, numNeg(n));
+                sum = new Sub(sum, n.negate());
             } else {
                 sum = new Add(sum, term);
             }
@@ -181,7 +184,7 @@ public class Simplifier implements MathOperation {
     private static Term splitCoefficient(ASTNode node) {
         if (node instanceof Neg neg) {
             Term inner = splitCoefficient(neg.operand());
-            return new Term(numNeg(inner.coeff()), inner.base());
+            return new Term(inner.coeff().negate(), inner.base());
         }
         if (node instanceof Mul m) {
             if (m.left() instanceof Num c) {
@@ -193,8 +196,6 @@ public class Simplifier implements MathOperation {
         }
         return new Term(ONE, node);
     }
-
-    // ---- Products --------------------------------------------------------
 
     private static ASTNode simplifyProduct(Mul node) {
         List<ASTNode> factors = new ArrayList<>();
@@ -210,7 +211,7 @@ public class Simplifier implements MathOperation {
                 if (n.isZero()) {
                     return ZERO;
                 }
-                coefficient = numMul(coefficient, n);
+                coefficient = coefficient.times(n);
                 continue;
             }
             ASTNode base;
@@ -292,8 +293,6 @@ public class Simplifier implements MathOperation {
         return false;
     }
 
-    // ---- Division, powers, functions ------------------------------------
-
     private static ASTNode simplifyDiv(ASTNode left, ASTNode right) {
         ASTNode a = simplify(left);
         ASTNode b = simplify(right);
@@ -304,7 +303,7 @@ public class Simplifier implements MathOperation {
             return ZERO;
         }
         if (a instanceof Num an && b instanceof Num bn && !bn.isZero()) {
-            return numDiv(an, bn);
+            return an.dividedBy(bn);
         }
         if (a.equals(b)) {
             return ONE;
@@ -313,7 +312,7 @@ public class Simplifier implements MathOperation {
         ScaledTerm numerator = extractScaledTerm(a);
         ScaledTerm denominator = extractScaledTerm(b);
         if (!numerator.scale().equals(ONE) || !denominator.scale().equals(ONE)) {
-            Num scale = numDiv(numerator.scale(), denominator.scale());
+            Num scale = numerator.scale().dividedBy(denominator.scale());
             ASTNode inner = simplifyDiv(numerator.rest(), denominator.rest());
             if (scale.equals(ONE)) {
                 return inner;
@@ -339,16 +338,16 @@ public class Simplifier implements MathOperation {
         }
         if (node instanceof Neg n) {
             ScaledTerm inner = extractScaledTerm(n.operand());
-            return new ScaledTerm(numNeg(inner.scale()), inner.rest());
+            return new ScaledTerm(inner.scale().negate(), inner.rest());
         }
         if (node instanceof Mul m) {
             if (m.left() instanceof Num c) {
                 ScaledTerm inner = extractScaledTerm(m.right());
-                return new ScaledTerm(numMul(c, inner.scale()), inner.rest());
+                return new ScaledTerm(c.times(inner.scale()), inner.rest());
             }
             if (m.right() instanceof Num c) {
                 ScaledTerm inner = extractScaledTerm(m.left());
-                return new ScaledTerm(numMul(c, inner.scale()), inner.rest());
+                return new ScaledTerm(c.times(inner.scale()), inner.rest());
             }
         }
         return new ScaledTerm(ONE, node);
@@ -374,6 +373,12 @@ public class Simplifier implements MathOperation {
         if (b instanceof Num bn && e instanceof Num en && en.isInteger()) {
             return numPow(bn, en);
         }
+        if (b instanceof Num bn && e instanceof Num en) {
+            Optional<Num> root = exactRoot(bn, en.denominator());
+            if (root.isPresent()) {
+                return numPow(root.get(), new Num(en.numerator(), BigInteger.ONE));
+            }
+        }
         if (b instanceof Func f && "sqrt".equals(f.name()) && e instanceof Num en
                 && en.isInteger() && en.numerator().intValueExact() == 2) {
             return f.argument();
@@ -393,6 +398,14 @@ public class Simplifier implements MathOperation {
                     if (root.multiply(root).equals(n.numerator())) {
                         return new Num(root, BigInteger.ONE);
                     }
+                }
+            }
+            case "abs" -> {
+                if (a instanceof Num n) {
+                    return isNegative(n) ? n.negate() : n;
+                }
+                if (a instanceof Neg n) {
+                    return simplifyFunc("abs", n.operand());
                 }
             }
             case "sin", "tan" -> {
@@ -418,29 +431,6 @@ public class Simplifier implements MathOperation {
         return new Func(name, a);
     }
 
-    // ---- Exact rational helpers -----------------------------------------
-
-    private static Num numAdd(Num a, Num b) {
-        BigInteger numerator = a.numerator().multiply(b.denominator())
-                .add(b.numerator().multiply(a.denominator()));
-        BigInteger denominator = a.denominator().multiply(b.denominator());
-        return new Num(numerator, denominator);
-    }
-
-    private static Num numMul(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.numerator()),
-                a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numDiv(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.denominator()),
-                a.denominator().multiply(b.numerator()));
-    }
-
-    private static Num numNeg(Num a) {
-        return new Num(a.numerator().negate(), a.denominator());
-    }
-
     private static ASTNode numPow(Num base, Num integerExponent) {
         BigInteger exp = integerExponent.numerator();
         if (exp.signum() == 0) {
@@ -456,6 +446,29 @@ public class Simplifier implements MathOperation {
             return new Num(denominator, numerator);
         }
         return new Num(numerator, denominator);
+    }
+
+    /** The real {@code degree}-th root of {@code n} when it is rational, e.g. {@code (8/27)^(1/3) = 2/3}. */
+    private static Optional<Num> exactRoot(Num n, BigInteger degree) {
+        if (degree.bitLength() > 5 || (n.numerator().signum() < 0 && !degree.testBit(0))) {
+            return Optional.empty();
+        }
+        int k = degree.intValueExact();
+        Optional<BigInteger> num = exactIntegerRoot(n.numerator().abs(), k);
+        Optional<BigInteger> den = exactIntegerRoot(n.denominator(), k);
+        if (num.isEmpty() || den.isEmpty()) {
+            return Optional.empty();
+        }
+        BigInteger signedNum = n.numerator().signum() < 0 ? num.get().negate() : num.get();
+        return Optional.of(new Num(signedNum, den.get()));
+    }
+
+    private static Optional<BigInteger> exactIntegerRoot(BigInteger value, int k) {
+        if (value.bitLength() > 62) {
+            return Optional.empty();
+        }
+        BigInteger guess = BigInteger.valueOf(Math.round(Math.pow(value.doubleValue(), 1.0 / k)));
+        return guess.pow(k).equals(value) ? Optional.of(guess) : Optional.empty();
     }
 
     private static boolean isNegative(Num n) {

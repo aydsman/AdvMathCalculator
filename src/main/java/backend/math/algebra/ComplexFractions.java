@@ -1,12 +1,12 @@
 package backend.math.algebra;
 
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Sub;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,10 +1,10 @@
 package backend.math.calculus.differential;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
+import backend.math.Expressions;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -15,6 +15,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ import java.util.Locale;
  * <p>Supports sum/difference, constant multiple, power, product, quotient, chain,
  * and standard trig / log / sqrt rules.
  */
-public class Derivative implements MathOperation {
+public class Derivative implements ExpressionOperation {
 
     private static final String DEFAULT_VAR = "x";
     private static final Num ZERO = Num.of(0);
@@ -39,7 +40,8 @@ public class Derivative implements MathOperation {
         return differentiate(input, DEFAULT_VAR);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return differentiate(parseInput(raw), DEFAULT_VAR);
     }
 
@@ -87,8 +89,8 @@ public class Derivative implements MathOperation {
         return Result.of(simplified, null, steps);
     }
 
-    /** Package helper for sibling differential modules. */
-    static ASTNode derivativeOf(ASTNode expression, String variable) {
+    /** Helper for sibling modules (implicit derivatives, L'Hôpital, tangent lines). */
+    public static ASTNode derivativeOf(ASTNode expression, String variable) {
         return fullySimplify(diff(Simplifier.simplify(expression), variable).derivative());
     }
 
@@ -140,8 +142,8 @@ public class Derivative implements MathOperation {
             case Constant c -> DiffResult.of(ZERO, "Constant rule: d/d" + variable + "[" + c.name() + "] = 0");
             case Var v -> diffVariable(v, variable);
             case Neg n -> diffNeg(n.operand(), variable);
-            case Add a -> diffSum(flattenSum(node), variable);
-            case Sub s -> diffSum(flattenSum(new Add(s.left(), new Neg(s.right()))), variable);
+            case Add a -> diffSum(Expressions.terms(node), variable);
+            case Sub s -> diffSum(Expressions.terms(node), variable);
             case Mul m -> diffProduct(m, variable);
             case Div d -> diffQuotient(d, variable);
             case Pow p -> diffPower(p, variable);
@@ -348,6 +350,7 @@ public class Derivative implements MathOperation {
             case "cot" -> Simplifier.simplify(new Neg(new Pow(new Func("csc", arg), Num.of(2))));
             case "ln", "log" -> Simplifier.simplify(new Div(ONE, arg));
             case "sqrt" -> Simplifier.simplify(new Div(ONE, new Mul(Num.of(2), new Func("sqrt", arg))));
+            case "abs" -> Simplifier.simplify(new Div(arg, new Func("abs", arg)));
             default -> throw new UnsupportedOperationException("Derivative not supported for: " + name);
         };
 
@@ -360,6 +363,7 @@ public class Derivative implements MathOperation {
             case "cot" -> "cot";
             case "ln", "log" -> "ln";
             case "sqrt" -> "sqrt";
+            case "abs" -> "abs";
             default -> name;
         };
 
@@ -381,24 +385,4 @@ public class Derivative implements MathOperation {
         return new DiffResult(derivative, steps);
     }
 
-    private static List<ASTNode> flattenSum(ASTNode node) {
-        List<ASTNode> terms = new ArrayList<>();
-        flattenSumInto(node, terms);
-        return terms;
-    }
-
-    private static void flattenSumInto(ASTNode node, List<ASTNode> out) {
-        switch (node) {
-            case Add a -> {
-                flattenSumInto(a.left(), out);
-                flattenSumInto(a.right(), out);
-            }
-            case Sub s -> {
-                flattenSumInto(s.left(), out);
-                flattenSumInto(new Neg(s.right()), out);
-            }
-            case Neg n -> flattenSumInto(n.operand(), out);
-            default -> out.add(node);
-        }
-    }
 }

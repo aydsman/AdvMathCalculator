@@ -4,7 +4,6 @@ import backend.engine.MathOperation;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Mul;
@@ -13,6 +12,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -28,11 +28,7 @@ public class Transformations implements MathOperation {
     private static final String VAR = "x";
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter parent | transformed, e.g. x^2 | 2*(x-1)^2 + 3");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         List<Step> steps = new ArrayList<>();
         String[] parts = raw.split("\\|");
         if (parts.length != 2) {

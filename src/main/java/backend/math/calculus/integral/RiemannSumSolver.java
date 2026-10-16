@@ -6,7 +6,6 @@ import backend.math.algebra.Simplifier;
 import backend.math.functions.FunctionUtils;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Mul;
@@ -15,6 +14,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,16 +50,16 @@ final class RiemannSumSolver {
 
         List<Step> steps = new ArrayList<>();
         steps.add(IntegralNotation.definiteIntegralStep(a, b, function, variable));
-        steps.add(new Step("Left Riemann sum spacing", "\u0394x = (b-a)/n = " + deltaX.toDisplay()));
+        steps.add(new Step("Left Riemann sum spacing", "Δx = (b-a)/n = " + deltaX.toDisplay()));
         steps.add(new Step("Left endpoints",
-                "x_k = a + k\u0394x,  k = 0, 1, ..., n-1"));
+                "x_k = a + kΔx,  k = 0, 1, ..., n-1"));
         steps.add(new Step("Set up the left Riemann sum",
-                "S_n = \u0394x \u00B7 \u03A3_{k=0}^{n-1} f(x_k)"));
+                "S_n = Δx · Σ_{k=0}^{n-1} f(x_k)"));
         steps.add(new Step("Substitute f(x)",
-                "S_n = \u0394x \u00B7 \u03A3_{k=0}^{n-1} (" + function.toDisplay()
-                        + ") with x = a + k\u0394x"));
-        steps.add(new Step("Expand f(a + k\u0394x) as a polynomial in k",
-                "f(a + k\u0394x) = " + expanded.toDisplay()));
+                "S_n = Δx · Σ_{k=0}^{n-1} (" + function.toDisplay()
+                        + ") with x = a + kΔx"));
+        steps.add(new Step("Expand f(a + kΔx) as a polynomial in k",
+                "f(a + kΔx) = " + expanded.toDisplay()));
 
         TreeMap<Integer, ASTNode> grouped = groupedCoefficients(coeffs, a, deltaX, maxPower);
         for (int power = 0; power <= maxPower; power++) {
@@ -74,7 +74,7 @@ final class RiemannSumSolver {
                     SummationIdentities.sumNotation(power) + " = "
                             + SummationIdentities.sumKToPowDisplay(power)));
             steps.add(new Step("Replace in the sum",
-                    "\u0394x \u00B7 (" + coeff.toDisplay() + ") \u00B7 "
+                    "Δx · (" + coeff.toDisplay() + ") · "
                             + SummationIdentities.sumKToPowDisplay(power)));
         }
 

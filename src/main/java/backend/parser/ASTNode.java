@@ -1,26 +1,16 @@
 package backend.parser;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Symbolic expression tree node.
+ * Immutable symbolic expression tree shared by the parser and every math module.
  *
- * <p>The whole math backend operates on this tree. It is a {@code sealed}
- * interface so the math modules can use exhaustive pattern-matching
- * {@code switch} over every node kind, e.g.
- *
- * <pre>{@code
- * switch (node) {
- *     case ASTNode.Num n           -> ...
- *     case ASTNode.Add(var l, var r) -> ...
- *     // every case must be handled (compiler-checked)
- * }
- * }</pre>
- *
- * <p>Numbers are stored exactly as rationals (see {@link Num}) to support the
- * "exact + decimal" answers the project requires. Operators are kept explicit
- * (rather than a canonical {@code Add}/{@code Mul} normal form) so the original
- * structure of a user's expression is preserved for clean step-by-step display.
+ * <p>Numbers are exact rationals ({@link Num}). Operators are kept as written
+ * rather than normalized, so step-by-step output mirrors the user's input.
  */
 public sealed interface ASTNode
         permits ASTNode.Num, ASTNode.Constant, ASTNode.Var,
@@ -60,9 +50,38 @@ public sealed interface ASTNode
             return numerator.signum() == 0;
         }
 
+        public Num plus(Num other) {
+            return new Num(numerator.multiply(other.denominator).add(other.numerator.multiply(denominator)),
+                    denominator.multiply(other.denominator));
+        }
+
+        public Num minus(Num other) {
+            return plus(other.negate());
+        }
+
+        public Num times(Num other) {
+            return new Num(numerator.multiply(other.numerator), denominator.multiply(other.denominator));
+        }
+
+        /** @throws ArithmeticException if {@code other} is zero */
+        public Num dividedBy(Num other) {
+            return new Num(numerator.multiply(other.denominator), denominator.multiply(other.numerator));
+        }
+
+        public Num negate() {
+            return new Num(numerator.negate(), denominator);
+        }
+
+        /** @throws ArithmeticException if this is zero and {@code exponent} is negative */
+        public Num pow(int exponent) {
+            BigInteger num = numerator.pow(Math.abs(exponent));
+            BigInteger den = denominator.pow(Math.abs(exponent));
+            return exponent < 0 ? new Num(den, num) : new Num(num, den);
+        }
+
         public double toDouble() {
-            return new java.math.BigDecimal(numerator)
-                    .divide(new java.math.BigDecimal(denominator), java.math.MathContext.DECIMAL64)
+            return new BigDecimal(numerator)
+                    .divide(new BigDecimal(denominator), MathContext.DECIMAL64)
                     .doubleValue();
         }
     }
@@ -88,7 +107,7 @@ public sealed interface ASTNode
     /** Single-argument function application such as {@code sin(x)}, {@code ln(x)}, {@code sqrt(x)}. */
     record Func(String name, ASTNode argument) implements ASTNode {}
 
-    /** Convenience: a human-readable, precedence-aware rendering of this node. */
+    /** Human-readable rendering with only the parentheses precedence requires. */
     default String toDisplay() {
         return format(this);
     }
@@ -99,16 +118,85 @@ public sealed interface ASTNode
             case Num n -> n.isInteger()
                     ? n.numerator().toString()
                     : n.numerator() + "/" + n.denominator();
-            case Constant c -> c.name();
+            case Constant c -> switch (c.name()) {
+                case "PI" -> "pi";
+                case "E" -> "e";
+                default -> c.name();
+            };
             case Var v -> v.name();
             case Neg(ASTNode a) -> "-" + wrap(a, 3);
-            case Add(ASTNode l, ASTNode r) -> wrap(l, 1) + " + " + wrap(r, 1);
-            case Sub(ASTNode l, ASTNode r) -> wrap(l, 1) + " - " + wrap(r, 2);
-            case Mul(ASTNode l, ASTNode r) -> wrap(l, 2) + "*" + wrap(r, 2);
+            case Add(ASTNode l, ASTNode r) -> joinSigned(wrap(l, 1), " + ", " - ", wrap(r, 1));
+            case Sub(ASTNode l, ASTNode r) -> joinSigned(wrap(l, 1), " - ", " + ", wrap(r, 2));
+            case Mul m -> formatProduct(m);
             case Div(ASTNode l, ASTNode r) -> wrap(l, 2) + "/" + wrap(r, 3);
             case Pow(ASTNode b, ASTNode e) -> wrap(b, 5) + "^" + wrap(e, 4);
             case Func(String name, ASTNode arg) -> name + "(" + format(arg) + ")";
         };
+    }
+
+    /** Folds a leading minus on the right operand into the operator: {@code a + -b} reads {@code a - b}. */
+    private static String joinSigned(String left, String operator, String flipped, String right) {
+        return right.startsWith("-") ? left + flipped + right.substring(1) : left + operator + right;
+    }
+
+    /**
+     * Renders a product as a single fraction: rational coefficients and {@code 1/u}
+     * factors move to the denominator, so {@code 1/2*sqrt(3)} reads {@code sqrt(3)/2}
+     * and {@code x*1/(x+1)} reads {@code x/(x + 1)}.
+     */
+    private static String formatProduct(Mul product) {
+        List<ASTNode> factors = new ArrayList<>();
+        collectFactors(product, factors);
+
+        BigInteger coeffNum = BigInteger.ONE;
+        BigInteger coeffDen = BigInteger.ONE;
+        List<String> numerator = new ArrayList<>();
+        List<ASTNode> denominator = new ArrayList<>();
+        for (ASTNode factor : factors) {
+            if (factor instanceof Num n) {
+                coeffNum = coeffNum.multiply(n.numerator());
+                coeffDen = coeffDen.multiply(n.denominator());
+            } else if (factor instanceof Div(Num one, ASTNode d) && one.isInteger()
+                    && one.numerator().equals(BigInteger.ONE)) {
+                denominator.add(d);
+            } else {
+                numerator.add(wrap(factor, 2));
+            }
+        }
+        if (coeffDen.equals(BigInteger.ONE) && denominator.isEmpty()) {
+            return simpleProduct(factors);
+        }
+
+        String sign = coeffNum.signum() < 0 ? "-" : "";
+        BigInteger absNum = coeffNum.abs();
+        if (!absNum.equals(BigInteger.ONE) || numerator.isEmpty()) {
+            numerator.add(0, absNum.toString());
+        }
+        if (!coeffDen.equals(BigInteger.ONE)) {
+            denominator.add(0, new Num(coeffDen, BigInteger.ONE));
+        }
+        ASTNode den = denominator.get(0);
+        for (int i = 1; i < denominator.size(); i++) {
+            den = new Mul(den, denominator.get(i));
+        }
+        return sign + String.join("*", numerator) + "/" + wrap(den, 3);
+    }
+
+    private static String simpleProduct(List<ASTNode> factors) {
+        StringBuilder out = new StringBuilder(wrap(factors.get(0), 2));
+        for (int i = 1; i < factors.size(); i++) {
+            out.append('*').append(wrap(factors.get(i), 2));
+        }
+        return out.toString();
+    }
+
+    private static void collectFactors(ASTNode node, List<ASTNode> out) {
+        if (node instanceof Mul(ASTNode l, ASTNode r)) {
+            collectFactors(l, out);
+            collectFactors(r, out);
+        } else {
+            out.add(node);
+        }
     }
 
     private static int precedence(ASTNode node) {
@@ -119,6 +207,7 @@ public sealed interface ASTNode
             case Div d -> 2;
             case Neg n -> 3;
             case Pow p -> 4;
+            case Num num when !num.isInteger() -> 2;
             case Num num -> num.numerator().signum() < 0 ? 3 : 5;
             default -> 5;
         };

@@ -1,26 +1,25 @@
 package ui;
 
 import backend.engine.MathEngine;
-import backend.math.algebra.ExpressionEvaluator;
 import backend.math.algebra.EquationSolver;
+import backend.math.algebra.ExpressionEvaluator;
 import backend.math.algebra.Factoring;
 import backend.math.algebra.Inequalities;
 import backend.math.algebra.Simplifier;
+import backend.math.calculus.differential.Derivative;
+import backend.math.calculus.differential.ImplicitDerivative;
+import backend.math.calculus.differential.TangentLine;
+import backend.math.calculus.integral.Antiderivative;
+import backend.math.calculus.integral.RiemannSum;
+import backend.math.calculus.limits.Limit;
 import backend.math.functions.Composition;
 import backend.math.functions.DomainRange;
 import backend.math.functions.InverseFunction;
 import backend.math.functions.Transformations;
-import backend.math.calculus.differential.Derivative;
-import backend.math.calculus.differential.ImplicitDerivative;
-import backend.math.calculus.integral.Antiderivative;
-import backend.math.calculus.integral.RiemannSum;
-import backend.math.calculus.limits.Limit;
 import backend.math.trig.Identities;
 import backend.math.trig.TrigEquationSolver;
 import backend.math.trig.UnitCircle;
 import backend.models.ButtonNode;
-import backend.models.Result;
-import backend.models.Step;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.Region;
@@ -32,7 +31,6 @@ import ui.panels.RightPanel;
 import ui.visualizer.FreeGraph;
 
 import java.net.URL;
-import java.util.List;
 
 /**
  * JavaFX entry point. Builds the operation menu, wires the {@link MathEngine} to the
@@ -40,33 +38,17 @@ import java.util.List;
  */
 public class MainApp extends Application {
 
+    private static final double DEFAULT_WIDTH = 1280;
+    private static final double DEFAULT_HEIGHT = 800;
+    private static final double MIN_WIDTH = 900;
+    private static final double MIN_HEIGHT = 600;
+
     private final MathEngine engine = new MathEngine();
 
     @Override
     public void start(Stage stage) {
+        registerOperations();
         ButtonNode menu = buildMenu();
-        registerPlaceholderOperations(menu);
-        engine.register("parse", placeholder("parse"));
-
-        engine.register("simplify", new Simplifier());
-        engine.register("factor", new Factoring());
-        engine.register("evaluate", new ExpressionEvaluator());
-        engine.register("solveEquation", new EquationSolver());
-        engine.register("inequalities", new Inequalities());
-        engine.register("domainRange", new DomainRange());
-        engine.register("composition", new Composition());
-        engine.register("inverse", new InverseFunction());
-        engine.register("transformations", new Transformations());
-
-        engine.register("unitCircle", new UnitCircle());
-        engine.register("identities", new Identities());
-        engine.register("trigEquation", new TrigEquationSolver());
-
-        engine.register("derivative", new Derivative());
-        engine.register("implicitDerivative", new ImplicitDerivative());
-        engine.register("limit", new Limit());
-        engine.register("riemannSum", new RiemannSum());
-        engine.register("indefiniteIntegral", new Antiderivative());
 
         LeftPanel leftPanel = new LeftPanel();
         RightPanel rightPanel = new RightPanel(menu);
@@ -98,7 +80,7 @@ public class MainApp extends Application {
         bindFullWindow(freeGraph, root);
         bindFullWindow(calculatorRoot, root);
 
-        Scene scene = new Scene(root, 1280, 800);
+        Scene scene = new Scene(root, DEFAULT_WIDTH, DEFAULT_HEIGHT);
         URL css = MainApp.class.getResource("/ui/styles.css");
         if (css != null) {
             scene.getStylesheets().add(css.toExternalForm());
@@ -106,12 +88,35 @@ public class MainApp extends Application {
 
         stage.setTitle("Advanced Math Calculator");
         stage.setScene(scene);
-        stage.setMinWidth(900);
-        stage.setMinHeight(600);
+        stage.setMinWidth(MIN_WIDTH);
+        stage.setMinHeight(MIN_HEIGHT);
         stage.show();
     }
 
-    private ButtonNode buildMenu() {
+    private void registerOperations() {
+        engine.register("simplify", new Simplifier());
+        engine.register("factor", new Factoring());
+        engine.register("evaluate", new ExpressionEvaluator());
+        engine.register("solveEquation", new EquationSolver());
+        engine.register("inequalities", new Inequalities());
+        engine.register("domainRange", new DomainRange());
+        engine.register("composition", new Composition());
+        engine.register("inverse", new InverseFunction());
+        engine.register("transformations", new Transformations());
+
+        engine.register("unitCircle", new UnitCircle());
+        engine.register("identities", new Identities());
+        engine.register("trigEquation", new TrigEquationSolver());
+
+        engine.register("derivative", new Derivative());
+        engine.register("implicitDerivative", new ImplicitDerivative());
+        engine.register("tangentLine", new TangentLine());
+        engine.register("limit", new Limit());
+        engine.register("riemannSum", new RiemannSum());
+        engine.register("indefiniteIntegral", new Antiderivative());
+    }
+
+    private static ButtonNode buildMenu() {
         return ButtonNode.dropdown("Categories",
                 ButtonNode.dropdown("Algebra",
                         ButtonNode.action("Factor", "factor"),
@@ -132,13 +137,11 @@ public class MainApp extends Application {
                         ButtonNode.dropdown("Differential",
                                 ButtonNode.action("Limit", "limit"),
                                 ButtonNode.action("Derivative", "derivative"),
-                                ButtonNode.action("Implicit derivative", "implicitDerivative")),
+                                ButtonNode.action("Implicit derivative", "implicitDerivative"),
+                                ButtonNode.action("Tangent line", "tangentLine")),
                         ButtonNode.dropdown("Integral",
                                 ButtonNode.action("Riemann sum", "riemannSum"),
-                                ButtonNode.action("Indefinite", "indefiniteIntegral"),
-                                ButtonNode.action("Definite", "definiteIntegral"),
-                                ButtonNode.action("Area between curves", "areaBetweenCurves"),
-                                ButtonNode.dropdown("Series and Sequences"))),
+                                ButtonNode.action("Indefinite", "indefiniteIntegral"))),
                 ButtonNode.action("Free graph", "freeGraph"));
     }
 
@@ -160,25 +163,6 @@ public class MainApp extends Application {
         freeGraph.setVisible(false);
         calculatorShell.setVisible(true);
         calculatorShell.toFront();
-    }
-
-    private void registerPlaceholderOperations(ButtonNode node) {
-        if (node.isAction()) {
-            engine.register(node.getActionKey(), placeholder(node.getActionKey()));
-        } else {
-            for (ButtonNode child : node.getChildren()) {
-                registerPlaceholderOperations(child);
-            }
-        }
-    }
-
-    private static backend.engine.MathOperation placeholder(String key) {
-        return input -> Result.of(
-                input,
-                null,
-                List.of(
-                        new Step("Parsed your expression", input),
-                        new Step("'" + key + "' is not implemented yet \u2014 this is a placeholder.")));
     }
 
     public static void main(String[] args) {

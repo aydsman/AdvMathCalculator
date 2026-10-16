@@ -1,10 +1,9 @@
 package backend.math.trig;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Func;
@@ -13,6 +12,7 @@ import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * Applies standard trigonometric identities to simplify an expression.
  */
-public class Identities implements MathOperation {
+public class Identities implements ExpressionOperation {
 
     private static final Num ONE = Num.of(1);
     private static final Num TWO = Num.of(2);

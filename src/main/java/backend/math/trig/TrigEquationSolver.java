@@ -1,11 +1,10 @@
 package backend.math.trig;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.EquationSolver;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Func;
@@ -14,6 +13,7 @@ import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ import java.util.Optional;
 /**
  * Solves basic trigonometric equations such as {@code sin(x) = 1/2} or {@code 2*cos(x) - 1 = 0}.
  */
-public class TrigEquationSolver implements MathOperation {
+public class TrigEquationSolver implements ExpressionOperation {
 
     private static final String VAR = "x";
     private static final Num ZERO = Num.of(0);
@@ -35,7 +35,8 @@ public class TrigEquationSolver implements MathOperation {
         return solveZeroForm(input);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return solveZeroForm(EquationSolver.toZeroForm(raw));
     }
 

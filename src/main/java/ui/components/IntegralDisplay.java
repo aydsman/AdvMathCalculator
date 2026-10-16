@@ -15,7 +15,7 @@ public class IntegralDisplay extends HBox {
         setSpacing(0);
 
         Label upper = boundLabel(integral.upper());
-        Label sign = new Label("\u222B");
+        Label sign = new Label("∫");
         sign.getStyleClass().add("integral-sign");
         Label lower = boundLabel(integral.lower());
 

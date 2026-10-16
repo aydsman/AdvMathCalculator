@@ -33,7 +33,7 @@ public class Parser {
 
     private static final Set<String> CONSTANTS = Set.of("pi", "e");
     private static final List<String> FUNCTIONS = List.of(
-            "sqrt", "sin", "cos", "tan", "cot", "sec", "csc", "log", "ln");
+            "sqrt", "sin", "cos", "tan", "cot", "sec", "csc", "log", "ln", "abs");
 
     private static final Set<String> FUNCTION_SET = Set.copyOf(FUNCTIONS);
 

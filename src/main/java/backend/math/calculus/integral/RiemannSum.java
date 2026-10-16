@@ -8,8 +8,8 @@ import backend.math.functions.FunctionUtils;
 import backend.models.DefiniteIntegral;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Num;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.List;
@@ -22,13 +22,9 @@ public class RiemannSum implements MathOperation {
 
     private static final String DEFAULT_VAR = "x";
 
-    @Override
-    public Result solve(ASTNode input) {
-        return Result.of(Simplifier.simplify(input), null, List.of());
-    }
-
     /** Parses the integrand; bounds are supplied later from the calculate screen. */
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         ASTNode body = parseIntegrand(raw);
         return Result.of(body, null, List.of());
     }
@@ -73,7 +69,7 @@ public class RiemannSum implements MathOperation {
                 b.toDisplay(),
                 IntegralNotation.parenthesizeIfNeeded(function.toDisplay()),
                 variable);
-        return "\u222B_" + integral.lower() + "^" + integral.upper()
+        return "∫_" + integral.lower() + "^" + integral.upper()
                 + " " + integral.integrand() + " d" + integral.variable();
     }
 

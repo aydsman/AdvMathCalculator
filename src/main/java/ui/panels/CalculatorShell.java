@@ -22,7 +22,7 @@ public class CalculatorShell extends BorderPane {
     private final Region rightPanel;
     private final SplitPane split = new SplitPane();
     private final StackPane leftSlot = new StackPane();
-    private final Button toggle = new Button("\u2039");
+    private final Button toggle = new Button("‹");
     private final VBox collapsedStrip = new VBox(toggle);
 
     private boolean expanded = true;
@@ -69,7 +69,7 @@ public class CalculatorShell extends BorderPane {
         }
         split.getItems().set(0, collapsedStrip);
         split.setDividerPositions(COLLAPSED_DIVIDER);
-        toggle.setText("\u203A");
+        toggle.setText("›");
         expanded = false;
     }
 
@@ -83,7 +83,7 @@ public class CalculatorShell extends BorderPane {
         }
         split.getItems().set(0, leftSlot);
         split.setDividerPositions(savedDivider > COLLAPSED_DIVIDER ? savedDivider : EXPANDED_DIVIDER);
-        toggle.setText("\u2039");
+        toggle.setText("‹");
         expanded = true;
     }
 }

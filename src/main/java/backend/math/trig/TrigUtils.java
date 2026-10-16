@@ -1,7 +1,6 @@
 package backend.math.trig;
 
 import backend.math.algebra.Simplifier;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -11,6 +10,7 @@ import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Sub;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.Locale;

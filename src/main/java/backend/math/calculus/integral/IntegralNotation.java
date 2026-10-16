@@ -2,8 +2,8 @@ package backend.math.calculus.integral;
 
 import backend.models.DefiniteIntegral;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Num;
+import backend.parser.ASTNode;
 
 /** Shared definite-integral step builder for all integration operations. */
 public final class IntegralNotation {

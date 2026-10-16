@@ -76,8 +76,8 @@ class ParserTest {
     @Test
     void recognisesConstants() {
         assertInstanceOf(ASTNode.Constant.class, Parser.parse("pi"));
-        assertEquals("PI", Parser.parse("pi").toDisplay());
-        assertEquals("E", Parser.parse("e").toDisplay());
+        assertEquals("pi", Parser.parse("pi").toDisplay());
+        assertEquals("e", Parser.parse("e").toDisplay());
     }
 
     @Test

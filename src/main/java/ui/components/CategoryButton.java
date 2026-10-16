@@ -20,7 +20,7 @@ public class CategoryButton extends MenuButton {
 
     public CategoryButton(ButtonNode root) {
         getStyleClass().add("category-button");
-        setText("Operation \u25BE");
+        setText("Operation ▾");
         for (ButtonNode child : root.getChildren()) {
             getItems().add(buildItem(child, root.getLabel()));
         }
@@ -38,7 +38,7 @@ public class CategoryButton extends MenuButton {
         item.setOnAction(e -> {
             selected = node;
             selectedCategory = parentCategory;
-            setText(parentCategory + " \u00B7 " + node.getLabel());
+            setText(parentCategory + " · " + node.getLabel());
             if (onOperationSelected != null) {
                 onOperationSelected.accept(parentCategory, node);
             }

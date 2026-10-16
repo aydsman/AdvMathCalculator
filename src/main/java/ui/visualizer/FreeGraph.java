@@ -23,7 +23,7 @@ public class FreeGraph extends BorderPane {
         getStyleClass().add("free-graph-screen");
         setFocusTraversable(true);
 
-        Button backButton = new Button("\u2190 Calculator");
+        Button backButton = new Button("← Calculator");
         backButton.getStyleClass().add("free-graph-back");
         backButton.setOnAction(e -> {
             if (onBack != null) {

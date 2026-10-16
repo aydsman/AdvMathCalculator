@@ -1,12 +1,12 @@
 package backend.math.calculus.integral;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
+import backend.math.Expressions;
 import backend.math.algebra.Simplifier;
 import backend.math.calculus.differential.Derivative;
 import backend.math.functions.FunctionUtils;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Div;
@@ -17,6 +17,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import java.util.Locale;
  *
  * <p>Base table: powers, reciprocal, sin, cos, sqrt, sec², csc².
  */
-public class Antiderivative implements MathOperation {
+public class Antiderivative implements ExpressionOperation {
 
     private static final String DEFAULT_VAR = "x";
     private static final Num ZERO = Num.of(0);
@@ -45,7 +46,8 @@ public class Antiderivative implements MathOperation {
         return integrate(Simplifier.simplify(input), DEFAULT_VAR);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return integrate(parseInput(raw), DEFAULT_VAR);
     }
 
@@ -59,8 +61,8 @@ public class Antiderivative implements MathOperation {
         String lower = text.toLowerCase(Locale.ROOT);
         if (lower.startsWith("integral")) {
             text = text.substring("integral".length()).trim();
-        } else if (text.startsWith("\u222B") || lower.startsWith("int ")) {
-            text = text.substring(text.startsWith("\u222B") ? 1 : 4).trim();
+        } else if (text.startsWith("∫") || lower.startsWith("int ")) {
+            text = text.substring(text.startsWith("∫") ? 1 : 4).trim();
         }
 
         if (lower.endsWith(" dx") || text.endsWith(" dx") || text.endsWith(" d" + DEFAULT_VAR)) {
@@ -112,8 +114,7 @@ public class Antiderivative implements MathOperation {
                     core));
         }
 
-        // Pure constant (no variable): ∫ a dx = a*x + C
-        if (!containsVariable(core, variable)) {
+        if (!Expressions.containsVariable(core, variable)) {
             return constantIntegral(a, core, variable, steps);
         }
 
@@ -171,7 +172,7 @@ public class Antiderivative implements MathOperation {
      */
     private static Result tryUSubstitution(Num a, ASTNode core, String variable, List<Step> steps) {
         ASTNode normalized = rewriteDivisionsAsProducts(core);
-        List<ASTNode> factors = flattenMul(normalized);
+        List<ASTNode> factors = Expressions.factors(Simplifier.simplify(normalized));
         if (factors.size() < 2) {
             return null;
         }
@@ -182,10 +183,9 @@ public class Antiderivative implements MathOperation {
                 continue;
             }
             ASTNode g = outer.inner();
-            if (!containsVariable(g, variable)) {
+            if (!Expressions.containsVariable(g, variable)) {
                 continue;
             }
-            // Linear g is already handled by a·f(bx+c); still OK if we get here.
 
             ASTNode remaining = productOfExcept(factors, i);
             Result derivResult = Derivative.differentiate(g, variable);
@@ -264,25 +264,23 @@ public class Antiderivative implements MathOperation {
         return Result.of(withC, null, steps);
     }
 
-    // ---- Matching a·f(bx+c) ------------------------------------------------
-
     private record Peeled(Num factor, ASTNode core) {}
 
     private static Peeled peelConstantFactor(ASTNode node) {
         node = Simplifier.simplify(node);
         if (node instanceof Neg n) {
             Peeled inner = peelConstantFactor(n.operand());
-            return new Peeled(numMul(NEG_ONE, inner.factor()), inner.core());
+            return new Peeled(inner.factor().negate(), inner.core());
         }
         if (node instanceof Mul m) {
-            List<ASTNode> factors = flattenMul(m);
+            List<ASTNode> factors = Expressions.factors(Simplifier.simplify(m));
             Num coeff = ONE;
             List<ASTNode> rest = new ArrayList<>();
             for (ASTNode f : factors) {
                 if (f instanceof Num num) {
-                    coeff = numMul(coeff, num);
+                    coeff = coeff.times(num);
                 } else if (f instanceof Neg neg && neg.operand() instanceof Num num) {
-                    coeff = numMul(coeff, numNeg(num));
+                    coeff = coeff.times(num.negate());
                 } else {
                     rest.add(f);
                 }
@@ -298,21 +296,9 @@ public class Antiderivative implements MathOperation {
         }
         if (node instanceof Div d && d.left() instanceof Num num) {
             Peeled den = peelConstantFactor(d.right());
-            // num / (k * rest) = (num/k) * (1/rest) — only if rest is the full denominator core
-            return new Peeled(numDiv(num, den.factor()), Simplifier.simplify(new Div(ONE, den.core())));
+            return new Peeled(num.dividedBy(den.factor()), Simplifier.simplify(new Div(ONE, den.core())));
         }
         return new Peeled(ONE, node);
-    }
-
-    private static List<ASTNode> flattenMul(ASTNode node) {
-        node = Simplifier.simplify(node);
-        if (node instanceof Mul m) {
-            List<ASTNode> out = new ArrayList<>();
-            out.addAll(flattenMul(m.left()));
-            out.addAll(flattenMul(m.right()));
-            return out;
-        }
-        return List.of(node);
     }
 
     private enum FormKind {
@@ -329,7 +315,6 @@ public class Antiderivative implements MathOperation {
     private static MatchedForm matchAfBxC(ASTNode core, String variable) {
         OuterMatch outer = matchOuterF(core, variable);
         if (outer == null) {
-            // bare linear: bx+c → treat as u^1
             Linear linear = asLinear(core, variable);
             if (linear != null && !linear.b().isZero()) {
                 return new MatchedForm(FormKind.POWER, linear, ONE, "u");
@@ -396,31 +381,31 @@ public class Antiderivative implements MathOperation {
         Num b = ZERO;
         Num c = ZERO;
 
-        List<ASTNode> terms = flattenSum(node);
+        List<ASTNode> terms = Expressions.terms(Simplifier.simplify(node));
         for (ASTNode term : terms) {
             term = Simplifier.simplify(term);
             if (term instanceof Num n) {
-                c = numAdd(c, n);
+                c = c.plus(n);
                 continue;
             }
             if (term instanceof Var v && v.name().equals(variable)) {
-                b = numAdd(b, ONE);
+                b = b.plus(ONE);
                 continue;
             }
             if (term instanceof Neg n) {
                 ASTNode inner = Simplifier.simplify(n.operand());
                 if (inner instanceof Num num) {
-                    c = numAdd(c, numNeg(num));
+                    c = c.minus(num);
                     continue;
                 }
                 if (inner instanceof Var v && v.name().equals(variable)) {
-                    b = numAdd(b, NEG_ONE);
+                    b = b.plus(NEG_ONE);
                     continue;
                 }
                 if (inner instanceof Mul m) {
                     NumCoeffVar cv = coeffTimesVar(m, variable);
                     if (cv != null) {
-                        b = numAdd(b, numNeg(cv.coeff()));
+                        b = b.minus(cv.coeff());
                         continue;
                     }
                 }
@@ -429,7 +414,7 @@ public class Antiderivative implements MathOperation {
             if (term instanceof Mul m) {
                 NumCoeffVar cv = coeffTimesVar(m, variable);
                 if (cv != null) {
-                    b = numAdd(b, cv.coeff());
+                    b = b.plus(cv.coeff());
                     continue;
                 }
                 return null;
@@ -442,16 +427,16 @@ public class Antiderivative implements MathOperation {
     private record NumCoeffVar(Num coeff) {}
 
     private static NumCoeffVar coeffTimesVar(Mul m, String variable) {
-        List<ASTNode> factors = flattenMul(m);
+        List<ASTNode> factors = Expressions.factors(Simplifier.simplify(m));
         Num coeff = ONE;
         int varCount = 0;
         for (ASTNode f : factors) {
             if (f instanceof Num n) {
-                coeff = numMul(coeff, n);
+                coeff = coeff.times(n);
             } else if (f instanceof Var v && v.name().equals(variable)) {
                 varCount++;
             } else if (f instanceof Neg n && n.operand() instanceof Num num) {
-                coeff = numMul(coeff, numNeg(num));
+                coeff = coeff.times(num.negate());
             } else {
                 return null;
             }
@@ -462,34 +447,12 @@ public class Antiderivative implements MathOperation {
         return new NumCoeffVar(coeff);
     }
 
-    private static List<ASTNode> flattenSum(ASTNode node) {
-        List<ASTNode> out = new ArrayList<>();
-        flattenSumInto(Simplifier.simplify(node), out);
-        return out;
-    }
-
-    private static void flattenSumInto(ASTNode node, List<ASTNode> out) {
-        switch (node) {
-            case Add a -> {
-                flattenSumInto(a.left(), out);
-                flattenSumInto(a.right(), out);
-            }
-            case Sub s -> {
-                flattenSumInto(s.left(), out);
-                flattenSumInto(new Neg(s.right()), out);
-            }
-            default -> out.add(node);
-        }
-    }
-
-    // ---- Table F(u) --------------------------------------------------------
-
     private static ASTNode tableF(FormKind kind, Num exponent, ASTNode uExpr) {
         uExpr = Simplifier.simplify(uExpr);
         return switch (kind) {
             case POWER -> {
                 Num n = exponent;
-                Num nPlus1 = numAdd(n, ONE);
+                Num nPlus1 = n.plus(ONE);
                 yield Simplifier.simplify(new Div(new Pow(uExpr, nPlus1), nPlus1));
             }
             case RECIPROCAL -> Simplifier.simplify(new Func("ln", new Func("abs", uExpr)));
@@ -517,7 +480,7 @@ public class Antiderivative implements MathOperation {
             return linear.c();
         }
         if (linear.c().numerator().signum() < 0) {
-            return Simplifier.simplify(new Sub(bx, numNeg(linear.c())));
+            return Simplifier.simplify(new Sub(bx, linear.c().negate()));
         }
         return Simplifier.simplify(new Add(bx, linear.c()));
     }
@@ -526,41 +489,4 @@ public class Antiderivative implements MathOperation {
         return linearNode(linear, variable).toDisplay();
     }
 
-    private static boolean containsVariable(ASTNode node, String variable) {
-        return switch (node) {
-            case Var v -> v.name().equals(variable);
-            case Num n -> false;
-            case Constant c -> false;
-            case Neg n -> containsVariable(n.operand(), variable);
-            case Add a -> containsVariable(a.left(), variable) || containsVariable(a.right(), variable);
-            case Sub s -> containsVariable(s.left(), variable) || containsVariable(s.right(), variable);
-            case Mul m -> containsVariable(m.left(), variable) || containsVariable(m.right(), variable);
-            case Div d -> containsVariable(d.left(), variable) || containsVariable(d.right(), variable);
-            case Pow p -> containsVariable(p.base(), variable) || containsVariable(p.exponent(), variable);
-            case Func f -> containsVariable(f.argument(), variable);
-        };
-    }
-
-    // ---- Rational helpers --------------------------------------------------
-
-    private static Num numAdd(Num a, Num b) {
-        return new Num(
-                a.numerator().multiply(b.denominator()).add(b.numerator().multiply(a.denominator())),
-                a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numMul(Num a, Num b) {
-        return new Num(a.numerator().multiply(b.numerator()), a.denominator().multiply(b.denominator()));
-    }
-
-    private static Num numDiv(Num a, Num b) {
-        if (b.isZero()) {
-            throw new ArithmeticException("Division by zero");
-        }
-        return new Num(a.numerator().multiply(b.denominator()), a.denominator().multiply(b.numerator()));
-    }
-
-    private static Num numNeg(Num a) {
-        return new Num(a.numerator().negate(), a.denominator());
-    }
 }

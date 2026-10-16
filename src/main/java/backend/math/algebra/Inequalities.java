@@ -3,11 +3,11 @@ package backend.math.algebra;
 import backend.engine.MathOperation;
 import backend.models.Result;
 import backend.models.Step;
-import backend.parser.ASTNode;
 import backend.parser.ASTNode.Add;
 import backend.parser.ASTNode.Constant;
 import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
+import backend.parser.ASTNode;
 import backend.parser.Parser;
 
 import java.util.ArrayList;
@@ -28,13 +28,9 @@ public class Inequalities implements MathOperation {
 
     public record ParsedInequality(ASTNode lhs, RelationalOp op, ASTNode rhs) {}
 
-    @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter a full inequality such as 2*x + 3 > 7.");
-    }
-
     /** Parses and solves an inequality string such as {@code x^2 - 4 < 0}. */
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         List<Step> steps = new ArrayList<>();
         ParsedInequality parsed = parse(raw);
         steps.add(new Step("Original inequality",
