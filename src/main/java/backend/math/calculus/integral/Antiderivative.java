@@ -61,8 +61,8 @@ public class Antiderivative implements ExpressionOperation {
         String lower = text.toLowerCase(Locale.ROOT);
         if (lower.startsWith("integral")) {
             text = text.substring("integral".length()).trim();
-        } else if (text.startsWith("\u222B") || lower.startsWith("int ")) {
-            text = text.substring(text.startsWith("\u222B") ? 1 : 4).trim();
+        } else if (text.startsWith("∫") || lower.startsWith("int ")) {
+            text = text.substring(text.startsWith("∫") ? 1 : 4).trim();
         }
 
         if (lower.endsWith(" dx") || text.endsWith(" dx") || text.endsWith(" d" + DEFAULT_VAR)) {
@@ -114,7 +114,6 @@ public class Antiderivative implements ExpressionOperation {
                     core));
         }
 
-        // Pure constant (no variable): ∫ a dx = a*x + C
         if (!Expressions.containsVariable(core, variable)) {
             return constantIntegral(a, core, variable, steps);
         }
@@ -187,7 +186,6 @@ public class Antiderivative implements ExpressionOperation {
             if (!Expressions.containsVariable(g, variable)) {
                 continue;
             }
-            // Linear g is already handled by a·f(bx+c); still OK if we get here.
 
             ASTNode remaining = productOfExcept(factors, i);
             Result derivResult = Derivative.differentiate(g, variable);
@@ -266,8 +264,6 @@ public class Antiderivative implements ExpressionOperation {
         return Result.of(withC, null, steps);
     }
 
-    // ---- Matching a·f(bx+c) ------------------------------------------------
-
     private record Peeled(Num factor, ASTNode core) {}
 
     private static Peeled peelConstantFactor(ASTNode node) {
@@ -300,12 +296,10 @@ public class Antiderivative implements ExpressionOperation {
         }
         if (node instanceof Div d && d.left() instanceof Num num) {
             Peeled den = peelConstantFactor(d.right());
-            // num / (k * rest) = (num/k) * (1/rest) — only if rest is the full denominator core
             return new Peeled(num.dividedBy(den.factor()), Simplifier.simplify(new Div(ONE, den.core())));
         }
         return new Peeled(ONE, node);
     }
-
 
     private enum FormKind {
         POWER, RECIPROCAL, SIN, COS, SQRT, SEC2, CSC2
@@ -321,7 +315,6 @@ public class Antiderivative implements ExpressionOperation {
     private static MatchedForm matchAfBxC(ASTNode core, String variable) {
         OuterMatch outer = matchOuterF(core, variable);
         if (outer == null) {
-            // bare linear: bx+c → treat as u^1
             Linear linear = asLinear(core, variable);
             if (linear != null && !linear.b().isZero()) {
                 return new MatchedForm(FormKind.POWER, linear, ONE, "u");
@@ -454,10 +447,6 @@ public class Antiderivative implements ExpressionOperation {
         return new NumCoeffVar(coeff);
     }
 
-
-
-    // ---- Table F(u) --------------------------------------------------------
-
     private static ASTNode tableF(FormKind kind, Num exponent, ASTNode uExpr) {
         uExpr = Simplifier.simplify(uExpr);
         return switch (kind) {
@@ -499,8 +488,5 @@ public class Antiderivative implements ExpressionOperation {
     private static String formatLinear(Linear linear, String variable) {
         return linearNode(linear, variable).toDisplay();
     }
-
-
-    // ---- Rational helpers --------------------------------------------------
 
 }

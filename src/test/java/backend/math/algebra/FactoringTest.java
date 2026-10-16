@@ -1,9 +1,13 @@
 package backend.math.algebra;
 
+import backend.parser.ASTNode.Num;
 import backend.parser.Parser;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class FactoringTest {
 
@@ -22,6 +26,29 @@ class FactoringTest {
         assertEquals("(x + 2)*(x + 3)", factor("x^2 + 5*x + 6"));
         assertEquals("(x - 2)*(x - 3)", factor("x^2 - 5*x + 6"));
         assertEquals("(x + 1)^2", factor("x^2 + 2*x + 1"));
+    }
+
+    @Test
+    void neverDropsNonMonomialFactors() {
+        String input = "x^2*(x + 1) - 4*(x + 1)";
+        String factored = factor(input);
+        assertEquals(Factoring.coefficients(Simplifier.simplify(Parser.parse(input)), "x"),
+                Factoring.coefficients(Simplifier.simplify(Parser.parse(factored)), "x"));
+    }
+
+    @Test
+    void coefficientsExpandProductsAndPowers() {
+        assertEquals(Map.of(3, Num.of(1), 2, Num.of(1), 1, Num.of(-4), 0, Num.of(-4)),
+                Factoring.coefficients(Parser.parse("x^2*(x + 1) - 4*(x + 1)"), "x"));
+        assertEquals(Map.of(2, Num.of(-3), 0, Num.of(1)),
+                Factoring.coefficients(Parser.parse("x^2 - (2*x)^2 + 1"), "x"));
+    }
+
+    @Test
+    void coefficientsRejectNonPolynomials() {
+        assertNull(Factoring.coefficients(Parser.parse("sqrt(x^2 + 1)"), "x"));
+        assertNull(Factoring.coefficients(Parser.parse("pi*x"), "x"));
+        assertNull(Factoring.coefficients(Parser.parse("1/x"), "x"));
     }
 
     @Test

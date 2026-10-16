@@ -39,8 +39,8 @@ public class Limit implements MathOperation {
 
     private static final Num ONE = Num.of(1);
     private static final Num ZERO = Num.of(0);
-    private static final Constant POS_INF = new Constant("\u221e");
-    private static final Constant NEG_INF = new Constant("-\u221e");
+    private static final Constant POS_INF = new Constant("∞");
+    private static final Constant NEG_INF = new Constant("-∞");
     private static final int MAX_DEPTH = 8;
     private static final double SAMPLE_EPS = 1e-4;
     private static final double LARGE = 1e6;
@@ -58,8 +58,8 @@ public class Limit implements MathOperation {
                 String base = value.toDisplay();
                 return switch (side) {
                     case BOTH -> base;
-                    case LEFT -> base + "\u207b";
-                    case RIGHT -> base + "\u207a";
+                    case LEFT -> base + "⁻";
+                    case RIGHT -> base + "⁺";
                 };
             }
         }
@@ -67,7 +67,7 @@ public class Limit implements MathOperation {
         record Infinity(boolean positive) implements Approach {
             @Override
             public String toDisplay() {
-                return positive ? "\u221e" : "-\u221e";
+                return positive ? "∞" : "-∞";
             }
         }
     }
@@ -82,7 +82,7 @@ public class Limit implements MathOperation {
 
     private static Result evaluateLimit(LimitQuery query, int depth, List<Step> priorSteps) {
         if (depth > MAX_DEPTH) {
-            return failWith(priorSteps, "Could not resolve this limit after repeated attempts.");
+            return Result.failure("Could not resolve this limit after repeated attempts.", priorSteps);
         }
 
         String variable = query.variable();
@@ -92,7 +92,7 @@ public class Limit implements MathOperation {
         List<Step> steps = new ArrayList<>(priorSteps);
         if (depth == 0) {
             steps.add(new Step(
-                    "Find lim " + variable + " \u2192 " + approach.toDisplay(),
+                    "Find lim " + variable + " → " + approach.toDisplay(),
                     expression));
         }
 
@@ -169,14 +169,14 @@ public class Limit implements MathOperation {
             if (lhopital != null) {
                 return lhopital;
             }
-            return failWith(steps, indeterminateMessage(current, variable, approach));
+            return Result.failure(indeterminateMessage(current, variable, approach), steps);
         }
 
         if (isNonzeroOverZero(current, variable, approach.value())) {
             return divergeFromSide(current, variable, approach, steps);
         }
 
-        return failWith(steps, "Could not evaluate this limit with the available methods.");
+        return Result.failure("Could not evaluate this limit with the available methods.", steps);
     }
 
     private static Result evaluateAtInfinity(String variable, Approach.Infinity approach,
@@ -194,18 +194,15 @@ public class Limit implements MathOperation {
             return rational;
         }
 
-        // x = 1/t, then lim t -> 0+/-
-        Num zero = ZERO;
         Side side = approach.positive() ? Side.RIGHT : Side.LEFT;
         ASTNode substituted = FunctionUtils.substitute(current, variable, new Div(ONE, new Var(variable)));
         substituted = Simplifier.simplify(substituted);
         steps.add(new Step(
-                "Substitute " + variable + " = 1/t with t \u2192 0"
-                        + (approach.positive() ? "\u207a" : "\u207b"),
+                "Substitute " + variable + " = 1/t with t → 0"
+                        + (approach.positive() ? "⁺" : "⁻"),
                 substituted));
 
-        Approach.Finite tApproach = new Approach.Finite(zero, side);
-        // Keep using the same variable name as t for the nested limit.
+        Approach.Finite tApproach = new Approach.Finite(ZERO, side);
         return evaluateAtFinite(variable, tApproach, substituted, steps, depth + 1);
     }
 
@@ -230,7 +227,7 @@ public class Limit implements MathOperation {
                 + ", deg(den) = " + degDen));
 
         if (degNum < degDen) {
-            steps.add(new Step("Degree of numerator is smaller \u2014 limit is 0", ZERO));
+            steps.add(new Step("Degree of numerator is smaller — limit is 0", ZERO));
             return Result.of(ZERO, null, steps);
         }
         if (degNum == degDen) {
@@ -239,14 +236,13 @@ public class Limit implements MathOperation {
             return finishNumeric(ratio, steps);
         }
 
-        // degNum > degDen → ±∞ depending on leading signs and side
         boolean positiveLead = leadNum.numerator().signum() * leadDen.numerator().signum() > 0;
         int sign = positiveLead ? 1 : -1;
         if (!approach.positive() && ((degNum - degDen) % 2 != 0)) {
             sign = -sign;
         }
         Constant inf = sign > 0 ? POS_INF : NEG_INF;
-        steps.add(new Step("Degree of numerator is larger \u2014 limit is " + inf.toDisplay(), inf));
+        steps.add(new Step("Degree of numerator is larger — limit is " + inf.toDisplay(), inf));
         return Result.of(inf, null, steps);
     }
 
@@ -269,8 +265,8 @@ public class Limit implements MathOperation {
 
         String formLabel = isZeroOverZero(parts.numerator(), parts.denominator(), variable, approach)
                 ? "0/0"
-                : "\u221e/\u221e";
-        steps.add(new Step("Indeterminate form " + formLabel + " \u2014 apply L'H\u00f4pital's rule"));
+                : "∞/∞";
+        steps.add(new Step("Indeterminate form " + formLabel + " — apply L'Hôpital's rule"));
 
         ASTNode numPrime;
         ASTNode denPrime;
@@ -278,19 +274,13 @@ public class Limit implements MathOperation {
             numPrime = Derivative.derivativeOf(parts.numerator(), variable);
             denPrime = Derivative.derivativeOf(parts.denominator(), variable);
         } catch (RuntimeException e) {
-            steps.add(new Step("Could not differentiate for L'H\u00f4pital: "
+            steps.add(new Step("Could not differentiate for L'Hôpital: "
                     + (e.getMessage() != null ? e.getMessage() : "unsupported")));
             return null;
         }
 
         steps.add(new Step("Differentiate the numerator", numPrime));
         steps.add(new Step("Differentiate the denominator", denPrime));
-
-        if (isZeroAtApproach(denPrime, variable, approach)
-                && isZeroAtApproach(numPrime, variable, approach) == false
-                && !isInfiniteAtApproach(denPrime, variable, approach)) {
-            // still ok — may be another 0/0 after simplify
-        }
 
         ASTNode next = Simplifier.simplify(RationalExpression.quotient(numPrime, denPrime));
         steps.add(new Step("New limit expression", next));
@@ -308,7 +298,7 @@ public class Limit implements MathOperation {
             return null;
         }
 
-        steps.add(new Step("Indeterminate form 0/0 \u2014 factor and cancel common terms"));
+        steps.add(new Step("Indeterminate form 0/0 — factor and cancel common terms"));
 
         ASTNode factoredNum = Simplifier.simplify(Factoring.factor(rational.numerator()));
         if (!factoredNum.equals(rational.numerator())) {
@@ -354,7 +344,7 @@ public class Limit implements MathOperation {
 
         if (!isDefinedNear(expression, variable, approach)) {
             steps.add(new Step("Expression is not defined from this side near the approach"));
-            return failWith(steps, "The limit does not exist from this side.");
+            return Result.failure("The limit does not exist from this side.", steps);
         }
 
         try {
@@ -362,7 +352,7 @@ public class Limit implements MathOperation {
             if (evaluation.hasExact()) {
                 Num exact = evaluation.exact();
                 steps.add(new Step("Limit", exact));
-                Double decimal = exact.denominator().equals(java.math.BigInteger.ONE) ? null : exact.toDouble();
+                Double decimal = exact.isInteger() ? null : exact.toDouble();
                 return Result.of(exact, decimal, steps);
             }
             steps.add(new Step("Limit (approximate)"));
@@ -382,7 +372,7 @@ public class Limit implements MathOperation {
                 return null;
             }
             String message = e.getMessage() != null ? e.getMessage() : "Could not evaluate";
-            return failWith(steps, message);
+            return Result.failure(message, steps);
         }
     }
 
@@ -399,7 +389,7 @@ public class Limit implements MathOperation {
             int rightSign = infinitySign(expression, variable, right);
             if (leftSign != 0 && rightSign != 0 && leftSign != rightSign) {
                 steps.add(new Step("Left- and right-hand limits diverge to opposite infinities"));
-                return failWith(steps, "The limit does not exist (approaches \u00b1\u221e).");
+                return Result.failure("The limit does not exist (approaches ±∞).", steps);
             }
             if (sign == 0) {
                 sign = leftSign != 0 ? leftSign : rightSign;
@@ -407,15 +397,15 @@ public class Limit implements MathOperation {
         }
 
         if (sign > 0) {
-            steps.add(new Step("Approaches +\u221e", POS_INF));
-            return failWith(steps, "The limit does not exist (approaches \u221e).");
+            steps.add(new Step("Approaches +∞", POS_INF));
+            return Result.failure("The limit does not exist (approaches ∞).", steps);
         }
         if (sign < 0) {
-            steps.add(new Step("Approaches -\u221e", NEG_INF));
-            return failWith(steps, "The limit does not exist (approaches -\u221e).");
+            steps.add(new Step("Approaches -∞", NEG_INF));
+            return Result.failure("The limit does not exist (approaches -∞).", steps);
         }
-        steps.add(new Step("Denominator is 0 after substitution \u2014 the limit is not finite at this point"));
-        return failWith(steps, "The limit does not exist (approaches \u00b1\u221e).");
+        steps.add(new Step("Denominator is 0 after substitution — the limit is not finite at this point"));
+        return Result.failure("The limit does not exist (approaches ±∞).", steps);
     }
 
     private static int infinitySign(ASTNode expression, String variable, Approach.Finite approach) {
@@ -432,7 +422,6 @@ public class Limit implements MathOperation {
             if (Math.abs(value) > 1e8) {
                 return value > 0 ? 1 : -1;
             }
-            // Compare with a closer sample to see direction
             double closer = samplePoint(new Approach.Finite(approach.value(), approach.side()),
                     SAMPLE_EPS / 10);
             double closerVal = ExpressionEvaluator.evaluateAtDouble(expression, variable, closer);
@@ -480,14 +469,13 @@ public class Limit implements MathOperation {
 
     private static Result resolveTwoSidedWithAbs(String variable, Approach.Finite approach,
                                                  ASTNode expression, List<Step> steps, int depth) {
-        // Only special-case when abs argument vanishes at the approach (kink / indeterminate).
         if (!absArgumentVanishes(expression, variable, approach.value())) {
             return null;
         }
         List<Step> leftSteps = new ArrayList<>(steps);
         List<Step> rightSteps = new ArrayList<>(steps);
-        leftSteps.add(new Step("Absolute value changes at the approach \u2014 compare one-sided limits"));
-        rightSteps.add(new Step("Absolute value changes at the approach \u2014 compare one-sided limits"));
+        leftSteps.add(new Step("Absolute value changes at the approach — compare one-sided limits"));
+        rightSteps.add(new Step("Absolute value changes at the approach — compare one-sided limits"));
 
         Result left = evaluateAtFinite(variable, new Approach.Finite(approach.value(), Side.LEFT),
                 rewriteAbs(expression, variable, new Approach.Finite(approach.value(), Side.LEFT)).expression(),
@@ -505,7 +493,7 @@ public class Limit implements MathOperation {
             return null; // fall through to normal path
         }
         steps.add(new Step("Left- and right-hand limits differ"));
-        return failWith(steps, "The limit does not exist (left and right limits differ).");
+        return Result.failure("The limit does not exist (left and right limits differ).", steps);
     }
 
     private static boolean sameAnswer(Result a, Result b) {
@@ -612,7 +600,6 @@ public class Limit implements MathOperation {
                 if (left != null && left.equals(right)) {
                     return left;
                 }
-                // Continuous away from zero: use value at the point when nonzero
                 ASTNode at = Simplifier.simplify(FunctionUtils.substitute(expression, variable, finite.value()));
                 if (at instanceof Num n && !n.isZero()) {
                     return n.numerator().signum() > 0 ? 1 : -1;
@@ -638,7 +625,7 @@ public class Limit implements MathOperation {
             if (evaluation.hasExact()) {
                 Num exact = evaluation.exact();
                 steps.add(new Step("Limit", exact));
-                Double decimal = exact.denominator().equals(java.math.BigInteger.ONE) ? null : exact.toDouble();
+                Double decimal = exact.isInteger() ? null : exact.toDouble();
                 return Result.of(exact, decimal, steps);
             }
             steps.add(new Step("Limit (approximate)"));
@@ -647,12 +634,6 @@ public class Limit implements MathOperation {
             steps.add(new Step("Limit", node));
             return Result.of(node, null, steps);
         }
-    }
-
-    private static Result failWith(List<Step> steps, String message) {
-        // Preserve steps in the failure path by returning a failed Result
-        // (Result.failure does not carry steps; include message only).
-        return Result.failure(message);
     }
 
     private static boolean sameExpression(ASTNode a, ASTNode b) {
@@ -700,7 +681,6 @@ public class Limit implements MathOperation {
         if (approach instanceof Approach.Finite finite) {
             return isZeroAt(expression, variable, finite.value());
         }
-        // At infinity: treat polynomials of positive degree as infinite, constants as themselves
         return false;
     }
 
@@ -889,7 +869,6 @@ public class Limit implements MathOperation {
             return new ApproachParse(approach, close + 1);
         }
 
-        // Read until whitespace or ')' — then peel off optional one-sided +/- from a finite value.
         while (pos < text.length() && !Character.isWhitespace(text.charAt(pos)) && text.charAt(pos) != ')') {
             pos++;
         }
@@ -919,18 +898,14 @@ public class Limit implements MathOperation {
             if (last == '+' || last == '-') {
                 String without = raw.substring(0, raw.length() - 1).trim();
                 String withoutLower = without.toLowerCase(Locale.ROOT);
-                // Don't treat the sign of a pure signed infinity / negative number start as a side
-                // when the token is just "-" or the side would leave an empty / invalid number —
-                // but "1-" / "2+" / "-3+" are one-sided.
+                // A trailing sign marks a one-sided limit ("2+", "-3-") only when the rest is a number.
                 if (!without.isEmpty() && !isPositiveInfinity(withoutLower) && !isNegativeInfinity(withoutLower)) {
-                    // Negative numbers like "-3" must not become side from a lone leading minus.
-                    // Only treat trailing +/- as side when the prefix parses as a number.
                     try {
                         ExpressionEvaluator.parseNumeric(without);
                         numberText = without;
                         side = last == '+' ? Side.RIGHT : Side.LEFT;
-                    } catch (RuntimeException ignored) {
-                        // keep full token as the number (e.g. malformed)
+                    } catch (RuntimeException notANumber) {
+                        numberText = raw;
                     }
                 }
             }
@@ -943,12 +918,12 @@ public class Limit implements MathOperation {
     private static boolean isPositiveInfinity(String lower) {
         return lower.equals("inf") || lower.equals("infinity") || lower.equals("oo")
                 || lower.equals("+inf") || lower.equals("+infinity") || lower.equals("+oo")
-                || lower.equals("\u221e") || lower.equals("+\u221e");
+                || lower.equals("∞") || lower.equals("+∞");
     }
 
     private static boolean isNegativeInfinity(String lower) {
         return lower.equals("-inf") || lower.equals("-infinity") || lower.equals("-oo")
-                || lower.equals("-\u221e");
+                || lower.equals("-∞");
     }
 
     private static int skipWhitespace(String text, int pos) {

@@ -45,7 +45,7 @@ final class SummationIdentities {
 
     static String sumNotation(int power) {
         String superscript = power == 1 ? "" : "^" + power;
-        return "\u03A3_{k=0}^{n-1} k" + superscript;
+        return "Σ_{k=0}^{n-1} k" + superscript;
     }
 
     private static Num one() {

@@ -385,5 +385,4 @@ public class Derivative implements ExpressionOperation {
         return new DiffResult(derivative, steps);
     }
 
-
 }

@@ -40,7 +40,7 @@ public class InverseFunction implements MathOperation {
         }
 
         inverse = Simplifier.simplify(inverse);
-        steps.add(new Step("Solve y = f(x) for x to get f\u207B\u00B9(y)", inverse));
+        steps.add(new Step("Solve y = f(x) for x to get f⁻¹(y)", inverse));
         return Result.of(inverse, null, steps);
     }
 
@@ -50,7 +50,7 @@ public class InverseFunction implements MathOperation {
             Num a = poly.getOrDefault(1, Num.of(0));
             Num b = poly.getOrDefault(0, Num.of(0));
             if (!a.isZero()) {
-                steps.add(new Step("Linear function: f\u207B\u00B9(x) = (x \u2212 b) / a"));
+                steps.add(new Step("Linear function: f⁻¹(x) = (x − b) / a"));
                 return new Div(new Add(new Var(VAR), new Neg(b)), a);
             }
         }
@@ -59,24 +59,24 @@ public class InverseFunction implements MathOperation {
                 && p.exponent() instanceof Num n && n.isInteger()) {
             int exp = n.numerator().intValueExact();
             if (exp == 2) {
-                steps.add(new Step("Square function (x >= 0): f\u207B\u00B9(x) = sqrt(x)"));
+                steps.add(new Step("Square function (x >= 0): f⁻¹(x) = sqrt(x)"));
                 return new Func("sqrt", new Var(VAR));
             }
             if (exp == 3) {
-                steps.add(new Step("Cube function: f\u207B\u00B9(x) = x^(1/3)"));
+                steps.add(new Step("Cube function: f⁻¹(x) = x^(1/3)"));
                 return new Pow(new Var(VAR), new Div(Num.of(1), Num.of(3)));
             }
         }
 
         if (body instanceof Func f && "sqrt".equals(f.name()) && f.argument() instanceof Var v
                 && v.name().equals(VAR)) {
-            steps.add(new Step("Square root (x >= 0): f\u207B\u00B9(x) = x^2"));
+            steps.add(new Step("Square root (x >= 0): f⁻¹(x) = x^2"));
             return new Pow(new Var(VAR), Num.of(2));
         }
 
         if (body instanceof Div d && d.left() instanceof Num one && one.equals(Num.of(1))
                 && d.right() instanceof Var v && v.name().equals(VAR)) {
-            steps.add(new Step("Reciprocal: f\u207B\u00B9(x) = 1/x"));
+            steps.add(new Step("Reciprocal: f⁻¹(x) = 1/x"));
             return new Div(Num.of(1), new Var(VAR));
         }
 

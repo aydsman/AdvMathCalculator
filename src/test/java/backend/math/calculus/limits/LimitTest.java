@@ -65,7 +65,7 @@ class LimitTest {
         Result result = solve("lim x->1 (x+2)/(x-1)");
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("not exist") || result.getError().contains("\u221e"));
+        assertTrue(result.getError().contains("not exist") || result.getError().contains("∞"));
     }
 
     @Test
@@ -83,7 +83,7 @@ class LimitTest {
         Result result = solve("lim x->0 (x^2 + 1)/(x^2)");
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("not exist") || result.getError().contains("\u221e"));
+        assertTrue(result.getError().contains("not exist") || result.getError().contains("∞"));
     }
 
     @Test
@@ -131,7 +131,7 @@ class LimitTest {
         void verticalAsymptote(String input) {
             Result result = solve(input);
             assertFalse(result.isSuccess());
-            assertTrue(result.getError().contains("not exist") || result.getError().contains("\u221e"));
+            assertTrue(result.getError().contains("not exist") || result.getError().contains("∞"));
         }
 
         @Test
@@ -165,7 +165,7 @@ class LimitTest {
         void infinityDivergesWhenNumeratorDegreeWins() {
             Result result = solve("lim x->inf (x^4-10)/(4*x^3+x)");
             assertTrue(result.isSuccess(), result.getError());
-            assertEquals("\u221e", result.getExact().toDisplay());
+            assertEquals("∞", result.getExact().toDisplay());
         }
 
         @Test

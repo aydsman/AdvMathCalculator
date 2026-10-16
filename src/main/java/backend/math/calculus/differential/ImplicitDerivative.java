@@ -250,8 +250,6 @@ public class ImplicitDerivative implements ExpressionOperation {
         };
     }
 
-
-
     private static boolean isDyDx(ASTNode node) {
         return node instanceof Constant c && "dy/dx".equals(c.name());
     }

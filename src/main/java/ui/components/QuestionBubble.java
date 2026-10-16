@@ -20,7 +20,7 @@ public class QuestionBubble extends VBox {
         this.question = question;
         getStyleClass().add("bubble");
 
-        Label header = new Label(question.getCategory() + "  \u00B7  " + question.getOperation());
+        Label header = new Label(question.getCategory() + "  ·  " + question.getOperation());
         header.getStyleClass().add("bubble-header");
 
         Label input = new Label(question.getInput());
@@ -74,12 +74,12 @@ public class QuestionBubble extends VBox {
         if (exact != null) {
             String text = "= " + exact.toDisplay();
             if (result.getDecimal() != null) {
-                text += "  \u2248 " + trim(result.getDecimal());
+                text += "  ≈ " + trim(result.getDecimal());
             }
             return text;
         }
         if (result.getDecimal() != null) {
-            return "\u2248 " + trim(result.getDecimal());
+            return "≈ " + trim(result.getDecimal());
         }
         return "(no answer)";
     }

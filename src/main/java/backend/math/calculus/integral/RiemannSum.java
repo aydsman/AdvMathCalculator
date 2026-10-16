@@ -69,7 +69,7 @@ public class RiemannSum implements MathOperation {
                 b.toDisplay(),
                 IntegralNotation.parenthesizeIfNeeded(function.toDisplay()),
                 variable);
-        return "\u222B_" + integral.lower() + "^" + integral.upper()
+        return "∫_" + integral.lower() + "^" + integral.upper()
                 + " " + integral.integrand() + " d" + integral.variable();
     }
 

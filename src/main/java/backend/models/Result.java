@@ -12,8 +12,8 @@ import java.util.List;
  * ("exact + decimal where applicable") and the step-by-step breakdown. An
  * operation with several answers (e.g. roots of an equation) uses
  * {@link #getSolutions()}; a single-valued operation uses {@link #getExact()}.
- * Failures are represented with {@link #failure(String)} rather than exceptions
- * so the UI can render a message in the same flow.
+ * Failures are values ({@link #failure(String)}), not exceptions, so the UI renders
+ * them in the same flow as answers.
  */
 public class Result {
 
@@ -43,7 +43,12 @@ public class Result {
     }
 
     public static Result failure(String error) {
-        return new Result(false, error, null, null, null, null);
+        return failure(error, null);
+    }
+
+    /** A failure that keeps the steps attempted before giving up. */
+    public static Result failure(String error, List<Step> steps) {
+        return new Result(false, error, null, null, null, steps);
     }
 
     public boolean isSuccess() {

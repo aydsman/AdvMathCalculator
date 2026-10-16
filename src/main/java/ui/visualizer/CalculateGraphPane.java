@@ -115,7 +115,7 @@ public class CalculateGraphPane extends VBox {
 
         if ("derivative".equals(question.getOperation()) && plots.size() >= 2) {
             legend.getChildren().add(legendItem("f(x)", plots.get(0).getColor()));
-            legend.getChildren().add(legendItem("f\u2032(x)", plots.get(1).getColor()));
+            legend.getChildren().add(legendItem("f′(x)", plots.get(1).getColor()));
             return;
         }
 

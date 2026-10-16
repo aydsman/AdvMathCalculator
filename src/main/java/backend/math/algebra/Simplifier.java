@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Algebraic simplifier. Folds exact rational arithmetic, applies identity rules
@@ -91,8 +92,6 @@ public class Simplifier implements ExpressionOperation {
         }
         return new Neg(a);
     }
-
-    // ---- Sums (handles Add and, via rewriting, Sub) ----------------------
 
     private static ASTNode simplifySum(Add node) {
         List<ASTNode> terms = new ArrayList<>();
@@ -198,8 +197,6 @@ public class Simplifier implements ExpressionOperation {
         return new Term(ONE, node);
     }
 
-    // ---- Products --------------------------------------------------------
-
     private static ASTNode simplifyProduct(Mul node) {
         List<ASTNode> factors = new ArrayList<>();
         collectProductFactors(node, factors);
@@ -296,8 +293,6 @@ public class Simplifier implements ExpressionOperation {
         return false;
     }
 
-    // ---- Division, powers, functions ------------------------------------
-
     private static ASTNode simplifyDiv(ASTNode left, ASTNode right) {
         ASTNode a = simplify(left);
         ASTNode b = simplify(right);
@@ -378,6 +373,12 @@ public class Simplifier implements ExpressionOperation {
         if (b instanceof Num bn && e instanceof Num en && en.isInteger()) {
             return numPow(bn, en);
         }
+        if (b instanceof Num bn && e instanceof Num en) {
+            Optional<Num> root = exactRoot(bn, en.denominator());
+            if (root.isPresent()) {
+                return numPow(root.get(), new Num(en.numerator(), BigInteger.ONE));
+            }
+        }
         if (b instanceof Func f && "sqrt".equals(f.name()) && e instanceof Num en
                 && en.isInteger() && en.numerator().intValueExact() == 2) {
             return f.argument();
@@ -430,8 +431,6 @@ public class Simplifier implements ExpressionOperation {
         return new Func(name, a);
     }
 
-    // ---- Exact rational helpers -----------------------------------------
-
     private static ASTNode numPow(Num base, Num integerExponent) {
         BigInteger exp = integerExponent.numerator();
         if (exp.signum() == 0) {
@@ -447,6 +446,29 @@ public class Simplifier implements ExpressionOperation {
             return new Num(denominator, numerator);
         }
         return new Num(numerator, denominator);
+    }
+
+    /** The real {@code degree}-th root of {@code n} when it is rational, e.g. {@code (8/27)^(1/3) = 2/3}. */
+    private static Optional<Num> exactRoot(Num n, BigInteger degree) {
+        if (degree.bitLength() > 5 || (n.numerator().signum() < 0 && !degree.testBit(0))) {
+            return Optional.empty();
+        }
+        int k = degree.intValueExact();
+        Optional<BigInteger> num = exactIntegerRoot(n.numerator().abs(), k);
+        Optional<BigInteger> den = exactIntegerRoot(n.denominator(), k);
+        if (num.isEmpty() || den.isEmpty()) {
+            return Optional.empty();
+        }
+        BigInteger signedNum = n.numerator().signum() < 0 ? num.get().negate() : num.get();
+        return Optional.of(new Num(signedNum, den.get()));
+    }
+
+    private static Optional<BigInteger> exactIntegerRoot(BigInteger value, int k) {
+        if (value.bitLength() > 62) {
+            return Optional.empty();
+        }
+        BigInteger guess = BigInteger.valueOf(Math.round(Math.pow(value.doubleValue(), 1.0 / k)));
+        return guess.pow(k).equals(value) ? Optional.of(guess) : Optional.empty();
     }
 
     private static boolean isNegative(Num n) {

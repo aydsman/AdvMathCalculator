@@ -6,6 +6,8 @@ import backend.parser.ASTNode;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
+import java.util.List;
+
 /**
  * Renders a {@link Result} as a numbered, step-by-step breakdown followed by the final
  * answer. Shown in the right panel while in Calculate mode.
@@ -38,6 +40,7 @@ public class StepDisplay extends VBox {
             return;
         }
 
+        appendSteps(result.getSteps());
         if (!result.isSuccess()) {
             Label error = new Label(result.getError());
             error.getStyleClass().add("bubble-error");
@@ -46,8 +49,20 @@ public class StepDisplay extends VBox {
             return;
         }
 
+        VBox answerBox = new VBox();
+        answerBox.getStyleClass().add("final-answer");
+        Label label = new Label("Answer");
+        label.getStyleClass().add("final-answer-label");
+        Label value = new Label(answerText(result, showDecimal));
+        value.getStyleClass().add("final-answer-value");
+        value.setWrapText(true);
+        answerBox.getChildren().addAll(label, value);
+        getChildren().add(answerBox);
+    }
+
+    private void appendSteps(List<Step> steps) {
         int index = 1;
-        for (Step step : result.getSteps()) {
+        for (Step step : steps) {
             VBox stepBox = new VBox();
             stepBox.getStyleClass().add("step");
 
@@ -72,16 +87,6 @@ public class StepDisplay extends VBox {
             }
             getChildren().add(stepBox);
         }
-
-        VBox answerBox = new VBox();
-        answerBox.getStyleClass().add("final-answer");
-        Label label = new Label("Answer");
-        label.getStyleClass().add("final-answer-label");
-        Label value = new Label(answerText(result, showDecimal));
-        value.getStyleClass().add("final-answer-value");
-        value.setWrapText(true);
-        answerBox.getChildren().addAll(label, value);
-        getChildren().add(answerBox);
     }
 
     /** Waiting state for Evaluate before the user picks an x value. */
@@ -153,14 +158,14 @@ public class StepDisplay extends VBox {
         if (exact != null) {
             String text = exact.toDisplay();
             if (result.getDecimal() != null) {
-                text += "   \u2248 " + formatDecimal(result.getDecimal());
+                text += "   ≈ " + formatDecimal(result.getDecimal());
             } else if (showDecimal && result.getDecimal() != null) {
-                text += "   \u2248 " + formatDecimal(result.getDecimal());
+                text += "   ≈ " + formatDecimal(result.getDecimal());
             }
             return text;
         }
         if (result.getDecimal() != null) {
-            return "\u2248 " + formatDecimal(result.getDecimal());
+            return "≈ " + formatDecimal(result.getDecimal());
         }
         return "(no answer)";
     }

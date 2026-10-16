@@ -4,6 +4,7 @@ import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
 import backend.parser.ASTNode.Add;
+import backend.parser.ASTNode.Div;
 import backend.parser.ASTNode.Mul;
 import backend.parser.ASTNode.Neg;
 import backend.parser.ASTNode.Num;
@@ -83,7 +84,7 @@ public class Factoring implements ExpressionOperation {
         Optional<ASTNode> diffSq = tryDifferenceOfSquares(current);
         if (diffSq.isPresent()) {
             if (steps != null) {
-                steps.add(new Step("Recognize a difference of squares: a\u00B2 \u2212 b\u00B2 = (a + b)(a \u2212 b)",
+                steps.add(new Step("Recognize a difference of squares: a² − b² = (a + b)(a − b)",
                         diffSq.get()));
             }
             return diffSq.get();
@@ -100,11 +101,9 @@ public class Factoring implements ExpressionOperation {
         return current;
     }
 
-    // ---- GCF ----------------------------------------------------------------
-
     private static ASTNode pullGcf(ASTNode node) {
         List<SignedTerm> terms = collectTerms(node);
-        if (terms.size() < 2) {
+        if (terms == null || terms.size() < 2) {
             return node;
         }
 
@@ -166,8 +165,6 @@ public class Factoring implements ExpressionOperation {
         return buildMonomial(newCoeff, remaining);
     }
 
-    // ---- Difference of squares --------------------------------------------
-
     private static Optional<ASTNode> tryDifferenceOfSquares(ASTNode node) {
         ASTNode left;
         ASTNode right;
@@ -216,8 +213,6 @@ public class Factoring implements ExpressionOperation {
         return Optional.empty();
     }
 
-    // ---- Quadratic trinomial ------------------------------------------------
-
     private static Optional<ASTNode> tryQuadratic(ASTNode node) {
         Map<Integer, Num> poly = polynomialIn(node, DEFAULT_VAR);
         if (poly == null || !poly.containsKey(2) || poly.size() > 3) {
@@ -236,16 +231,16 @@ public class Factoring implements ExpressionOperation {
         int cv = c.numerator().intValueExact();
 
         Var var = new Var(DEFAULT_VAR);
-        List<Integer> aDivisors = positiveDivisors(av);
-        List<Integer> cDivisors = positiveDivisors(cv);
+        List<Integer> aDivisors = withSigns(positiveDivisors(av));
+        List<Integer> cDivisors = withSigns(positiveDivisors(cv));
 
-        for (int p : withSigns(aDivisors, av)) {
-            for (int r : withSigns(aDivisors, av)) {
+        for (int p : aDivisors) {
+            for (int r : aDivisors) {
                 if (p * r != av) {
                     continue;
                 }
-                for (int q : withSigns(cDivisors, cv)) {
-                    for (int s : withSigns(cDivisors, cv)) {
+                for (int q : cDivisors) {
+                    for (int s : cDivisors) {
                         if (q * s != cv) {
                             continue;
                         }
@@ -280,14 +275,13 @@ public class Factoring implements ExpressionOperation {
         return new Sub(bx, Num.of(-constant));
     }
 
-    // ---- Term / polynomial helpers ------------------------------------------
-
     private record SignedTerm(boolean negative, Num coeff, Map<String, Integer> vars) {}
 
+    /** Splits a sum into monomial terms, or returns {@code null} if any term is not a monomial. */
     private static List<SignedTerm> collectTerms(ASTNode node) {
         List<SignedTerm> raw = new ArrayList<>();
         flattenSum(node, false, raw);
-        return raw;
+        return raw.contains(null) ? null : raw;
     }
 
     private static void flattenSum(ASTNode node, boolean negative, List<SignedTerm> out) {
@@ -330,40 +324,90 @@ public class Factoring implements ExpressionOperation {
                 rest = m.left();
             }
         }
-        collectVarPowers(rest, vars);
-        return new SignedTerm(negative, coeff, vars);
+        return collectVarPowers(rest, vars) ? new SignedTerm(negative, coeff, vars) : null;
     }
 
-    private static void collectVarPowers(ASTNode node, Map<String, Integer> vars) {
-        switch (node) {
-            case Var v -> vars.merge(v.name(), 1, Integer::sum);
-            case Pow p when p.base() instanceof Var v && isTwo(p.exponent()) ->
-                    vars.merge(v.name(), 2, Integer::sum);
-            case Pow p when p.base() instanceof Var v && p.exponent() instanceof Num n && n.isInteger() ->
-                    vars.merge(v.name(), n.numerator().intValueExact(), Integer::sum);
-            case Mul m -> {
-                collectVarPowers(m.left(), vars);
-                collectVarPowers(m.right(), vars);
+    private static boolean collectVarPowers(ASTNode node, Map<String, Integer> vars) {
+        return switch (node) {
+            case Var v -> {
+                vars.merge(v.name(), 1, Integer::sum);
+                yield true;
             }
-            default -> { }
-        }
+            case Pow p when p.base() instanceof Var v && p.exponent() instanceof Num n
+                    && n.isInteger() && n.numerator().signum() > 0 -> {
+                vars.merge(v.name(), n.numerator().intValueExact(), Integer::sum);
+                yield true;
+            }
+            case Mul m -> collectVarPowers(m.left(), vars) && collectVarPowers(m.right(), vars);
+            default -> false;
+        };
     }
 
+    private static final int MAX_EXPANDED_POWER = 12;
+
+    /**
+     * Expands {@code node} into coefficients by degree, omitting zero terms.
+     * Returns {@code null} unless it is a polynomial in {@code varName} with rational coefficients.
+     */
     private static Map<Integer, Num> polynomialIn(ASTNode node, String varName) {
-        List<SignedTerm> terms = collectTerms(node);
+        return switch (node) {
+            case Num n -> monomial(0, n);
+            case Var v -> v.name().equals(varName) ? monomial(1, ONE) : null;
+            case Neg(ASTNode a) -> scale(polynomialIn(a, varName), Num.of(-1));
+            case Add(ASTNode l, ASTNode r) -> add(polynomialIn(l, varName), polynomialIn(r, varName));
+            case Sub(ASTNode l, ASTNode r) ->
+                    add(polynomialIn(l, varName), scale(polynomialIn(r, varName), Num.of(-1)));
+            case Mul(ASTNode l, ASTNode r) -> multiply(polynomialIn(l, varName), polynomialIn(r, varName));
+            case Div(ASTNode l, Num d) when !d.isZero() -> scale(polynomialIn(l, varName), ONE.dividedBy(d));
+            case Pow(ASTNode b, Num e) when e.isInteger() && e.numerator().signum() >= 0
+                    && e.numerator().intValueExact() <= MAX_EXPANDED_POWER -> {
+                Map<Integer, Num> base = polynomialIn(b, varName);
+                Map<Integer, Num> result = monomial(0, ONE);
+                for (int k = 0; k < e.numerator().intValueExact() && base != null; k++) {
+                    result = multiply(result, base);
+                }
+                yield base == null ? null : result;
+            }
+            default -> null;
+        };
+    }
+
+    private static Map<Integer, Num> monomial(int degree, Num coeff) {
         Map<Integer, Num> poly = new LinkedHashMap<>();
-        for (SignedTerm term : terms) {
-            if (term.vars().size() > 1 || (term.vars().size() == 1 && !term.vars().containsKey(varName))) {
-                return null;
-            }
-            int degree = term.vars().getOrDefault(varName, 0);
-            Num coeff = term.coeff();
-            if (term.negative()) {
-                coeff = new Num(coeff.numerator().negate(), coeff.denominator());
-            }
-            poly.merge(degree, coeff, Num::plus);
+        if (!coeff.isZero()) {
+            poly.put(degree, coeff);
         }
         return poly;
+    }
+
+    private static Map<Integer, Num> add(Map<Integer, Num> a, Map<Integer, Num> b) {
+        if (a == null || b == null) {
+            return null;
+        }
+        Map<Integer, Num> sum = new LinkedHashMap<>(a);
+        b.forEach((degree, coeff) -> sum.merge(degree, coeff, Num::plus));
+        sum.values().removeIf(Num::isZero);
+        return sum;
+    }
+
+    private static Map<Integer, Num> scale(Map<Integer, Num> poly, Num factor) {
+        if (poly == null) {
+            return null;
+        }
+        Map<Integer, Num> scaled = new LinkedHashMap<>();
+        poly.forEach((degree, coeff) -> scaled.put(degree, coeff.times(factor)));
+        scaled.values().removeIf(Num::isZero);
+        return scaled;
+    }
+
+    private static Map<Integer, Num> multiply(Map<Integer, Num> a, Map<Integer, Num> b) {
+        if (a == null || b == null) {
+            return null;
+        }
+        Map<Integer, Num> product = new LinkedHashMap<>();
+        a.forEach((da, ca) -> b.forEach((db, cb) -> product.merge(da + db, ca.times(cb), Num::plus)));
+        product.values().removeIf(Num::isZero);
+        return product;
     }
 
     private static ASTNode buildMonomial(Num coeff, Map<String, Integer> vars) {
@@ -413,15 +457,11 @@ public class Factoring implements ExpressionOperation {
         return divisors;
     }
 
-    private static List<Integer> withSigns(List<Integer> divisors, int target) {
+    private static List<Integer> withSigns(List<Integer> divisors) {
         List<Integer> signed = new ArrayList<>();
         for (int d : divisors) {
             signed.add(d);
             signed.add(-d);
-        }
-        if (target < 0) {
-            // ensure we consider factor pairs whose product is negative
-            return signed;
         }
         return signed;
     }
