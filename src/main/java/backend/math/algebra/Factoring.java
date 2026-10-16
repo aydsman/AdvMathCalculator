@@ -1,6 +1,6 @@
 package backend.math.algebra;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
 import backend.parser.ASTNode;
@@ -27,7 +27,7 @@ import java.util.Optional;
  * <p>Input is expected to already be simplified by {@code MathEngine} before
  * {@link #solve(ASTNode)} is called.
  */
-public class Factoring implements MathOperation {
+public class Factoring implements ExpressionOperation {
 
     private static final Num ZERO = Num.of(0);
     private static final Num ONE = Num.of(1);

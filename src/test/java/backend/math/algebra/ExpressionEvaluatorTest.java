@@ -65,7 +65,7 @@ class ExpressionEvaluatorTest {
     @Test
     void evaluateAtDoubleForGraphing() {
         ASTNode expr = Parser.parse("x^2 + sin(x)");
-        assertEquals(9, ExpressionEvaluator.evaluateAtDouble(expr, "x", 3), 1e-9);
+        assertEquals(9 + Math.sin(3), ExpressionEvaluator.evaluateAtDouble(expr, "x", 3), 1e-9);
         assertEquals(0, ExpressionEvaluator.evaluateAtDouble(Parser.parse("sin(x)"), "x", 0), 1e-9);
     }
 }

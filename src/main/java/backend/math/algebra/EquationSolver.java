@@ -1,6 +1,6 @@
 package backend.math.algebra;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
 import backend.parser.ASTNode;
@@ -27,7 +27,7 @@ import java.util.Set;
  * Solves single-variable equations in {@code x}: linear equations and quadratics
  * (factoring first, then the quadratic formula for exact radical roots).
  */
-public class EquationSolver implements MathOperation {
+public class EquationSolver implements ExpressionOperation {
 
     private static final Num ZERO = Num.of(0);
     private static final String VAR = "x";
@@ -49,6 +49,11 @@ public class EquationSolver implements MathOperation {
             right = ZERO;
         }
         return Simplifier.simplify(new Add(left, new Neg(right)));
+    }
+
+    @Override
+    public Result solve(String input) {
+        return solve(toZeroForm(input));
     }
 
     @Override

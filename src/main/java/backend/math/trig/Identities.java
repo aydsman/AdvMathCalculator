@@ -1,6 +1,6 @@
 package backend.math.trig;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * Applies standard trigonometric identities to simplify an expression.
  */
-public class Identities implements MathOperation {
+public class Identities implements ExpressionOperation {
 
     private static final Num ONE = Num.of(1);
     private static final Num TWO = Num.of(2);

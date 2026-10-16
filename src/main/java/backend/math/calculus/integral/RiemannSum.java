@@ -22,13 +22,9 @@ public class RiemannSum implements MathOperation {
 
     private static final String DEFAULT_VAR = "x";
 
-    @Override
-    public Result solve(ASTNode input) {
-        return Result.of(Simplifier.simplify(input), null, List.of());
-    }
-
     /** Parses the integrand; bounds are supplied later from the calculate screen. */
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         ASTNode body = parseIntegrand(raw);
         return Result.of(body, null, List.of());
     }

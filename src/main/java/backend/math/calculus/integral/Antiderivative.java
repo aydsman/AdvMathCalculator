@@ -1,6 +1,6 @@
 package backend.math.calculus.integral;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.Simplifier;
 import backend.math.calculus.differential.Derivative;
 import backend.math.functions.FunctionUtils;
@@ -32,7 +32,7 @@ import java.util.Locale;
  *
  * <p>Base table: powers, reciprocal, sin, cos, sqrt, sec², csc².
  */
-public class Antiderivative implements MathOperation {
+public class Antiderivative implements ExpressionOperation {
 
     private static final String DEFAULT_VAR = "x";
     private static final Num ZERO = Num.of(0);
@@ -45,7 +45,8 @@ public class Antiderivative implements MathOperation {
         return integrate(Simplifier.simplify(input), DEFAULT_VAR);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return integrate(parseInput(raw), DEFAULT_VAR);
     }
 

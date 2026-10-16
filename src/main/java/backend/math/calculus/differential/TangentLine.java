@@ -39,11 +39,7 @@ public class TangentLine implements MathOperation {
             "(?i)(?:\\s+at\\s+|\\s*@\\s*|\\s*,\\s*)" + DEFAULT_VAR + "\\s*=\\s*(.+)$");
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter a function and point, e.g. x^2 at x=2");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         ParsedInput parsed = parseInput(raw);
         return tangentAt(parsed.expression(), parsed.variable(), parsed.xValue());
     }

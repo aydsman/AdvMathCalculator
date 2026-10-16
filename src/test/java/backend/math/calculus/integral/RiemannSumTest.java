@@ -71,6 +71,6 @@ class RiemannSumTest {
                 RiemannSum.parseIntegrand("x^2+2"), "x", "0", "4", "10");
 
         assertTrue(result.isSuccess());
-        assertEquals("(x^2+2)", result.getSteps().get(0).getDefiniteIntegral().integrand());
+        assertEquals("(x^2 + 2)", result.getSteps().get(0).getDefiniteIntegral().integrand());
     }
 }

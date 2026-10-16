@@ -30,11 +30,7 @@ public class DomainRange implements MathOperation {
     private static final String VAR = "x";
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter a function such as f(x) = x^2 + 1 or sqrt(x).");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         List<Step> steps = new ArrayList<>();
         FunctionUtils.FunctionDef def = FunctionUtils.parseDefinition(raw, "f", VAR);
         ASTNode body = Simplifier.simplify(def.body());

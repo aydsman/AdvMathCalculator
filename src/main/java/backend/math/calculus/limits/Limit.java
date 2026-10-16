@@ -75,11 +75,7 @@ public class Limit implements MathOperation {
     public record LimitQuery(String variable, Approach approach, ASTNode expression) {}
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter a limit such as lim x->2 (x^2-4)/(x-2)");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         LimitQuery query = parseInput(raw);
         return evaluateLimit(query, 0, new ArrayList<>());
     }

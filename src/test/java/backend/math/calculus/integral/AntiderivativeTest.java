@@ -28,21 +28,21 @@ class AntiderivativeTest {
 
     @ParameterizedTest(name = "∫ {0} = {1}")
     @CsvSource(delimiter = '|', value = {
-            "x^2 | 1/3*x^3 + C",
-            "x | 1/2*x^2 + C",
+            "x^2 | x^3/3 + C",
+            "x | x^2/2 + C",
             "5 | 5*x + C",
             "sin(x) | -cos(x) + C",
             "cos(x) | sin(x) + C",
             "6*sin(2*x+1) | -3*cos(2*x + 1) + C",
-            "sin(2*x) | -1/2*cos(2*x) + C",
+            "sin(2*x) | -cos(2*x)/2 + C",
             "4*cos(2*x) | 2*sin(2*x) + C",
             "1/x | ln(abs(x)) + C",
-            "1/(2*x+3) | 1/2*ln(abs(2*x + 3)) + C",
-            "(2*x+1)^3 | 1/8*(2*x + 1)^4 + C",
-            "3*(2*x+1)^2 | 1/2*(2*x + 1)^3 + C",
-            "sqrt(x) | 2/3*x^3/2 + C",
+            "1/(2*x+3) | ln(abs(2*x + 3))/2 + C",
+            "(2*x+1)^3 | (2*x + 1)^4/8 + C",
+            "3*(2*x+1)^2 | (2*x + 1)^3/2 + C",
+            "sqrt(x) | 2*x^(3/2)/3 + C",
             "sec(x)^2 | tan(x) + C",
-            "csc(3*x)^2 | -1/3*cot(3*x) + C",
+            "csc(3*x)^2 | -cot(3*x)/3 + C",
     })
     void integratesAfBxC(String input, String expected) {
         Result result = solve(input.trim());
@@ -53,11 +53,11 @@ class AntiderivativeTest {
     @ParameterizedTest(name = "∫ {0} = {1} (u-sub)")
     @CsvSource(delimiter = '|', value = {
             "2*x*sin(x^2) | -cos(x^2) + C",
-            "x*sin(x^2) | -1/2*cos(x^2) + C",
+            "x*sin(x^2) | -cos(x^2)/2 + C",
             "2*x*cos(x^2) | sin(x^2) + C",
             "3*x^2*cos(x^3) | sin(x^3) + C",
-            "2*x*(x^2)^3 | 1/4*x^8 + C",
-            "x/(x^2+1) | 1/2*ln(abs(x^2 + 1)) + C",
+            "2*x*(x^2)^3 | x^8/4 + C",
+            "x/(x^2+1) | ln(abs(x^2 + 1))/2 + C",
     })
     void integratesSimpleUSub(String input, String expected) {
         Result result = solve(input.trim());

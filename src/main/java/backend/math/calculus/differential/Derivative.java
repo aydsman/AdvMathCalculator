@@ -1,6 +1,6 @@
 package backend.math.calculus.differential;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
 import backend.models.Step;
@@ -27,7 +27,7 @@ import java.util.Locale;
  * <p>Supports sum/difference, constant multiple, power, product, quotient, chain,
  * and standard trig / log / sqrt rules.
  */
-public class Derivative implements MathOperation {
+public class Derivative implements ExpressionOperation {
 
     private static final String DEFAULT_VAR = "x";
     private static final Num ZERO = Num.of(0);
@@ -39,7 +39,8 @@ public class Derivative implements MathOperation {
         return differentiate(input, DEFAULT_VAR);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return differentiate(parseInput(raw), DEFAULT_VAR);
     }
 

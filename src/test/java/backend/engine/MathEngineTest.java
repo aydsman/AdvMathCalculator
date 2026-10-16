@@ -1,8 +1,8 @@
 package backend.engine;
 
+import backend.math.algebra.Simplifier;
 import backend.models.Question;
 import backend.models.Result;
-import backend.parser.ASTNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -15,10 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MathEngineTest {
 
-    /** A stub operation that just echoes the parsed input back as the exact answer. */
     private static MathEngine engineWithEcho() {
+        ExpressionOperation echo = expression -> Result.of(expression, null, List.of());
         MathEngine engine = new MathEngine();
-        engine.register("echo", input -> Result.of(input, null, List.of()));
+        engine.register("echo", echo);
         return engine;
     }
 
@@ -116,12 +116,13 @@ class MathEngineTest {
     @Test
     void doesNotPreSimplifyForSimplifyOperation() {
         MathEngine engine = new MathEngine();
-        engine.register("simplify", new backend.math.algebra.Simplifier());
+        engine.register("simplify", new Simplifier());
         Question question = new Question("Algebra", "simplify", "x + x");
 
         Result result = engine.solve(question);
 
         assertTrue(result.isSuccess());
+        assertEquals("x + x", result.getSteps().get(0).getExpression().toDisplay());
         assertEquals("2*x", result.getExact().toDisplay());
     }
 }

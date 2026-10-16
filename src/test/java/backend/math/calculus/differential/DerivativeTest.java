@@ -327,12 +327,12 @@ class DerivativeTest {
         return Stream.of(
                 Arguments.of("ln(x)", "1/x"),
                 Arguments.of("lnx", "1/x"),
-                Arguments.of("ln(x^2)", "2*1/x^2*x"),
-                Arguments.of("ln(2*x)", "2*1/(2*x)"),
+                Arguments.of("ln(x^2)", "2*x/x^2"),
+                Arguments.of("ln(2*x)", "1/x"),
                 Arguments.of("sqrt(x)", "1/(2*sqrt(x))"),
-                Arguments.of("sqrt(x^2 + 1)", "2*1/(2*sqrt(x^2 + 1))*x"),
-                Arguments.of("sqrt(x^3)", "3*1/(2*sqrt(x^3))*x^2"),
-                Arguments.of("E^x", "E^x")
+                Arguments.of("sqrt(x^2 + 1)", "x/sqrt(x^2 + 1)"),
+                Arguments.of("sqrt(x^3)", "3*x^2/(2*sqrt(x^3))"),
+                Arguments.of("e^x", "e^x")
         );
     }
 

@@ -1,6 +1,6 @@
 package backend.math.calculus.differential;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.math.algebra.EquationSolver;
 import backend.math.algebra.Simplifier;
 import backend.models.Result;
@@ -27,7 +27,7 @@ import java.util.Locale;
  *
  * <p>Input examples: {@code x^2 + y^2 = 1}, {@code x*y = 5}, {@code x^2 + y^2 - 1}.
  */
-public class ImplicitDerivative implements MathOperation {
+public class ImplicitDerivative implements ExpressionOperation {
 
     private static final String X = "x";
     private static final String Y = "y";
@@ -40,7 +40,8 @@ public class ImplicitDerivative implements MathOperation {
         return differentiateEquation(input);
     }
 
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         return differentiateEquation(parseEquation(raw));
     }
 

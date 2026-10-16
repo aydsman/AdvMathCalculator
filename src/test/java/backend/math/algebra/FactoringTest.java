@@ -21,7 +21,7 @@ class FactoringTest {
     void factorsMonicQuadratic() {
         assertEquals("(x + 2)*(x + 3)", factor("x^2 + 5*x + 6"));
         assertEquals("(x - 2)*(x - 3)", factor("x^2 - 5*x + 6"));
-        assertEquals("(x + 1)*(x + 1)", factor("x^2 + 2*x + 1"));
+        assertEquals("(x + 1)^2", factor("x^2 + 2*x + 1"));
     }
 
     @Test

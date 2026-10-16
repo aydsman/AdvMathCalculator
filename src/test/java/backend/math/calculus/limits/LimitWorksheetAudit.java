@@ -23,7 +23,7 @@ public final class LimitWorksheetAudit {
             String status;
             String detail;
             try {
-                Result r = limit.solveFromInput(c.input());
+                Result r = limit.solve(c.input());
                 if (r.isSuccess()) {
                     String got = r.getExact() != null ? r.getExact().toDisplay()
                             : (r.getDecimal() != null ? String.valueOf(r.getDecimal()) : "?");

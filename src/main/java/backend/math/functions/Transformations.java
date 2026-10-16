@@ -28,11 +28,7 @@ public class Transformations implements MathOperation {
     private static final String VAR = "x";
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter parent | transformed, e.g. x^2 | 2*(x-1)^2 + 3");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         List<Step> steps = new ArrayList<>();
         String[] parts = raw.split("\\|");
         if (parts.length != 2) {

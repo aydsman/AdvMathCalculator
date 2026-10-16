@@ -33,19 +33,15 @@ public class ExpressionEvaluator implements MathOperation {
     private static final Pattern AT_X = Pattern.compile("@\\s*" + DEFAULT_VAR + "\\s*=\\s*(.+)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMMA_X = Pattern.compile(",\\s*" + DEFAULT_VAR + "\\s*=\\s*(.+)$", Pattern.CASE_INSENSITIVE);
 
-    @Override
-    public Result solve(ASTNode input) {
-        return Result.of(Simplifier.simplify(input), null, List.of());
-    }
-
     /** Parses {@code expr}, {@code expr @ x=2}, or {@code expr, x=2}. */
-    public Result solveFromInput(String raw) {
+    @Override
+    public Result solve(String raw) {
         ParsedInput parsed = parseInput(raw);
         ASTNode body = Simplifier.simplify(parsed.expression().body());
         if (parsed.xValue() != null) {
             return evaluateAt(body, parsed.expression().variable(), parsed.xValue());
         }
-        return solve(body);
+        return Result.of(body, null, List.of());
     }
 
     public static FunctionUtils.FunctionDef expressionFromInput(String raw) {

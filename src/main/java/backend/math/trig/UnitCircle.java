@@ -17,11 +17,7 @@ import java.util.List;
 public class UnitCircle implements MathOperation {
 
     @Override
-    public Result solve(ASTNode input) {
-        return Result.failure("Enter an angle such as 30, 45°, or pi/6.");
-    }
-
-    public Result solveFromInput(String raw) {
+    public Result solve(String raw) {
         return analyze(raw, UnitCircleOptions.allEnabled());
     }
 

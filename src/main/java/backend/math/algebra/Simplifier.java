@@ -1,6 +1,6 @@
 package backend.math.algebra;
 
-import backend.engine.MathOperation;
+import backend.engine.ExpressionOperation;
 import backend.models.Result;
 import backend.models.Step;
 import backend.parser.ASTNode;
@@ -14,6 +14,7 @@ import backend.parser.ASTNode.Num;
 import backend.parser.ASTNode.Pow;
 import backend.parser.ASTNode.Sub;
 import backend.parser.ASTNode.Var;
+import backend.parser.Parser;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -26,15 +27,18 @@ import java.util.Map;
  * (x+0, x*1, x^1, x^0, ...), combines like terms in sums, and combines powers of a
  * common base in products.
  *
- * <p>The static {@link #simplify(ASTNode)} method is the workhorse and is reused by
- * other modules (e.g. to tidy a derivative's output); {@link #solve(ASTNode)} wraps it
- * with a {@link Result} for the engine.
+ * <p>{@link #simplify(ASTNode)} is shared by the other modules to tidy their output.
  */
-public class Simplifier implements MathOperation {
+public class Simplifier implements ExpressionOperation {
 
     private static final Num ZERO = Num.of(0);
     private static final Num ONE = Num.of(1);
     private static final Num NEG_ONE = Num.of(-1);
+
+    @Override
+    public Result solve(String input) {
+        return solve(Parser.parse(input));
+    }
 
     @Override
     public Result solve(ASTNode input) {
